@@ -1,0 +1,18 @@
+== Run PostgreSQL Locally with Docker
+
+To run a local PostgreSQL database using Docker, use the following command:
+
+[source,bash]
+----
+docker run --name my-postgres \
+  -e POSTGRES_DB=protocallsdb \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -p 5432:5432 \
+  -d postgres:15
+----
+
+This will:
+- Create a database named `protocallsdb`
+- Use `postgres` as both the username and password - Expose the database on port `5432`
+- Run PostgreSQL version `15` in detached mode
