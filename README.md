@@ -72,22 +72,23 @@ evaluate protocol choices for their own distributed systems.
 
 2. Setup Database - Postgres
 
-----
-docker run --name my-postgres \
--e POSTGRES_DB=protocallsdb \
--e POSTGRES_USER=postgres \
--e POSTGRES_PASSWORD=postgres \
--p 5432:5432 \
--d postgres:15
-----
-2. Run individual services
+    ```bash
+    docker run --name my-postgres \
+    -e POSTGRES_DB=protocallsdb \
+    -e POSTGRES_USER=postgres \
+    -e POSTGRES_PASSWORD=postgres \
+    -p 5432:5432 \
+    -d postgres:15
+       ```
+
+3. Run individual services
 
    ```bash
    cd identityprovider
    mvn spring-boot:run
    ```
 
-3.
+4.
 ---
 
 ## Comparison Metrics (To Be Added)
