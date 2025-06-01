@@ -16,9 +16,6 @@ public class UserService implements UserDetailsService {
     @Autowired
     private UserRepository userRepository;
 
-//    @Autowired
-//    private AuthenticationManager authManager;
-
     private BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(5);
 
     @Override
@@ -31,19 +28,8 @@ public class UserService implements UserDetailsService {
         return new UserPrincipal(user);
     }
 
-    public Users register(Users user){
+    public Users register(final Users user){
         user.setPassword(encoder.encode(user.getPassword()));
         return userRepository.save(user);
     }
-
-
-//    public String verify(Users user) {
-//        Authentication authentication =
-//                authManager.authenticate(new UsernamePasswordAuthenticationToken(user.getUsername(), user.getPassword()));
-//
-//        if (authentication.isAuthenticated()){
-//            return "success";
-//        }
-//        return "failed";
-//    }
 }
