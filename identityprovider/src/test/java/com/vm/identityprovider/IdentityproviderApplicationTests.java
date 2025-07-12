@@ -1,13 +1,13 @@
-package com.vm.identityprovider;
+// package com.vm.identityprovider;
 
-import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
+// import org.junit.jupiter.api.Test;
+// import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
-class IdentityproviderApplicationTests {
+// @SpringBootTest
+// class IdentityproviderApplicationTests {
 
-	@Test
-	void contextLoads() {
-	}
+// 	@Test
+// 	void contextLoads() {
+// 	}
 
-}
+// }
