@@ -26,6 +26,8 @@ jobs:
           node-version: '20'
 
       - name: Install dependencies and run AutoDoc
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: |
           cd autodoc-ai-mcp-server
           npm ci
