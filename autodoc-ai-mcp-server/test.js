@@ -53,3 +53,5 @@ server.on('close', (code) => {
         console.log('📋 Try using it with Claude Desktop or another MCP client');
     }
 });
+
+//test comment to trigger auto-doc
