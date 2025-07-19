@@ -15,7 +15,7 @@ const request = {
       language: 'java',
       framework: 'spring-boot',
       outputPath: '../generated-docs',
-      openaiApiKey: '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'
+      openaiApiKey: ''
     }
   }
 };
