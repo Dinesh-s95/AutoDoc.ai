@@ -29,8 +29,8 @@ jobs:
         run: |
           cd autodoc-ai-mcp-server
           npm ci
+          npm run build
           node run-autodoc.js
-
 
       - name: Check for changes
         id: changes
