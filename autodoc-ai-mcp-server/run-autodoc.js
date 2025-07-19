@@ -15,7 +15,6 @@ const request = {
       language: 'java',
       framework: 'spring-boot',
       outputPath: '../generated-docs',
-      openaiApiKey: ''
     }
   }
 };
