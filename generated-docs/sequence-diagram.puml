@@ -1,0 +1,18 @@
+@startuml
+title .. - Runtime Flow
+
+actor User
+participant API
+
+
+database DB
+
+User -> API: Request
+
+
+
+
+
+API -> User: Response
+
+@enduml
