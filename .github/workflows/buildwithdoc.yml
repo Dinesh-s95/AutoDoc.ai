@@ -1,0 +1,51 @@
+name: AutoDoc on PR
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  generate-autodocs:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - name: Checkout PR code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run AutoDoc generator
+        run: |
+          cd autodoc-ai-mcp-server
+          node run-autodoc.js
+
+      - name: Check for changes
+        id: changes
+        run: |
+          git config user.name "autodoc-bot"
+          git config user.email "autodoc@github.com"
+
+          git add generated-docs
+          if git diff --cached --quiet; then
+            echo "No changes to commit."
+            echo "changed=false" >> $GITHUB_OUTPUT
+          else
+            git commit -m "Auto-generated documentation by AutoDoc.AI"
+            echo "changed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Push changes to PR branch
+        if: steps.changes.outputs.changed == 'true'
+        run: |
+          git push origin HEAD:${{ github.head_ref }}
