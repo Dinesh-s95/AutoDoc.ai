@@ -25,10 +25,12 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Run AutoDoc generator
+      - name: Install dependencies and run AutoDoc
         run: |
           cd autodoc-ai-mcp-server
+          npm ci
           node run-autodoc.js
+
 
       - name: Check for changes
         id: changes
