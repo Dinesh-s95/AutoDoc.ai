@@ -1,0 +1,35 @@
+{
+  "name": "autodoc-ai-mcp-server",
+  "version": "1.0.0",
+  "description": "AutoDoc.AI MCP Server with OpenAI integration",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "mcp",
+    "documentation",
+    "ai",
+    "openai",
+    "spring-boot",
+    "java"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.15.1",
+    "openai": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -1,0 +1,54 @@
+@startuml
+
+package "SpringBootApplication" {
+  class IdentityproviderApplication
+}
+
+package "Data Transfer Objects" {
+  class AuthResponse
+  class UserPrincipal
+  class AuthRequest
+}
+
+package "Repository" {
+  class UserRepository
+}
+
+package "Config" {
+  class SecurityConfig
+}
+
+package "Security" {
+  class JwtAuthFilter
+}
+
+package "Entity" {
+  class Users
+}
+
+package "Controller" {
+  class UserController
+}
+
+package "Service" {
+  class JWTService
+  class UserService
+}
+
+Users <-- UserRepository
+UserPrincipal --> Users
+UserController --> Users
+UserController --> UserService
+UserController --> JWTService
+UserService --> Users
+UserService --> UserRepository
+JWTService --> Users
+JwtAuthFilter --> JWTService
+JwtAuthFilter --> UserService
+SecurityConfig --> JwtAuthFilter
+SecurityConfig --> UserService
+IdentityproviderApplication --> UserController
+
+@enduml
+
+The architecture diagram generated from the PlantUML code will show the classes grouped into logical packages (Controller, Service, Repository, Entity, Config, Security, SpringBootApplication, Data Transfer Objects). The arrows represent dependencies between classes. For example, the `UserController` class has dependencies on the `Users`, `UserService`, and `JWTService` classes.

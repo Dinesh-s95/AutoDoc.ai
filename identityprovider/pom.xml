@@ -83,11 +83,11 @@
 		</dependency>
 
 		<!-- java parser to extract classes -->
-		<dependency>
+		<!-- <dependency>
 			<groupId>com.github.javaparser</groupId>
 			<artifactId>javaparser-core</artifactId>
 			<version>3.25.4</version>
-		</dependency>
+		</dependency> -->
 	</dependencies>
 
 	<build>
