@@ -4,6 +4,7 @@ const server = spawn('node', ['dist/index.js'], {
   stdio: ['pipe', 'pipe', 'pipe']
 });
 
+//request
 const request = {
   jsonrpc: '2.0',
   id: 2,
