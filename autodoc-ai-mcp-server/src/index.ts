@@ -96,7 +96,7 @@ class AutoDocAI {
   constructor(config: AutoDocConfig) {
     this.config = config;
     this.openai = new OpenAI({
-      baseURL: 'https://openrouter.ai/api/v1',
+      // baseURL: 'https://openrouter.ai/api/v1',
       apiKey: config.openaiApiKey,
     });
     this.ensureOutputDirectory();
@@ -400,8 +400,8 @@ Provide a clear, professional description of what this class does and its role i
 
     try {
       const response = await this.openai.chat.completions.create({
-        // model:'gpt-3.5-turbo',
-        model: 'deepseek/deepseek-chat-v3-0324:free',
+        model:'gpt-3.5-turbo',
+        // model: 'deepseek/deepseek-chat-v3-0324:free',
         messages: [{ role: 'user', content: prompt }],
         max_tokens: 120,
         temperature: 0.3,
