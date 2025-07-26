@@ -110,19 +110,19 @@ class AutoDocAI {
 
   async generateAllDocumentation(): Promise<string> {
     try {
-      console.error('🚀 Starting AutoDoc.AI documentation generation...');
+      console.info('🚀 Starting AutoDoc.AI documentation generation...');
       
       const files = await this.scanProjectFiles();
-      console.error(`📂 Found ${files.length} source files`);
+      console.info(`📂 Found ${files.length} source files`);
 
       const analysis = await this.analyzeCodebase(files);
-      console.error(`🔍 Analyzed ${analysis.classes.length} classes, ${analysis.methods.length} methods`);
+      console.info(`🔍 Analyzed ${analysis.classes.length} classes, ${analysis.methods.length} methods`);
 
       const enhancedAnalysis = await this.enhanceWithAI(analysis);
-      console.error('🧠 Enhanced with AI descriptions');
+      console.info('🧠 Enhanced with AI descriptions');
 
       await this.generateDocumentationFiles(enhancedAnalysis);
-      console.error('📝 Generated all documentation files');
+      console.info('📝 Generated all documentation files');
 
       return `✅ Documentation generated successfully in ${this.config.outputPath}`;
     } catch (error) {
@@ -221,15 +221,25 @@ class AutoDocAI {
   }
 
   private analyzeJavaFile(content: string, filePath: string, analysis: CodeAnalysis): void {
-    // Extract Java classes
-    const classRegex = /(?:@[\w\s(),="\/\.\-]*\s*)*(?:public\s+|private\s+|protected\s+)?(?:abstract\s+|final\s+)?class\s+(\w+)(?:\s+extends\s+\w+)?(?:\s+implements\s+[\w\s,]+)?\s*\{/g;
+    // Extract Java classes, interfaces, and enums with robust annotation/comment/whitespace handling
+    const classRegex = /((?:@\w+(?:\([^\)]*\))?\s*)*)(public|protected|private)?\s*(abstract|final)?\s*(class|interface|enum)\s+(\w+)/g;
     let match;
-    
     while ((match = classRegex.exec(content)) !== null) {
-      const className = match[1];
-      const annotations = this.extractAnnotations(content, match.index);
+      const className = match[5];
+      // Extract annotation lines from match[1]
+      const annotationBlock = match[1] || '';
+      const annotations = annotationBlock
+        .split(/\r?\n/)
+        .map(line => line.trim())
+        .filter(line => line.startsWith('@'));
       const classType = this.determineClassType(annotations);
-      
+
+      // Debug log for each detected class
+      console.info(`[AutoDoc Debug] File: ${filePath}`);
+      console.info(`[AutoDoc Debug] Detected class: ${className}`);
+      console.info(`[AutoDoc Debug] Annotations: ${JSON.stringify(annotations)}`);
+      console.info(`[AutoDoc Debug] Determined type: ${classType}`);
+
       const classInfo: ClassInfo = {
         name: className,
         type: classType,
@@ -240,10 +250,19 @@ class AutoDocAI {
       };
 
       analysis.classes.push(classInfo);
-      
+
       if (classType === 'controller') analysis.controllers.push(classInfo);
       if (classType === 'service') analysis.services.push(classInfo);
       if (classType === 'repository') analysis.repositories.push(classInfo);
+      if (classType === 'entity') {
+        const entityInfo: EntityInfo = {
+          name: className,
+          tableName: className,
+          fields: [],
+          relationships: [],
+        };
+        analysis.entities.push(entityInfo);
+      }
     }
 
     // Extract Java methods
@@ -307,29 +326,37 @@ class AutoDocAI {
   }
 
   private extractAnnotations(content: string, index: number): string[] {
-    const annotations: string[] = [];
-    const lines = content.substring(Math.max(0, index - 500), index).split('\n').slice(-10);
-    
-    for (const line of lines.reverse()) {
-      const trimmed = line.trim();
-      if (trimmed.startsWith('@')) {
-        annotations.unshift(trimmed);
-      } else if (trimmed && !trimmed.startsWith('//') && !trimmed.startsWith('/*') && !trimmed.startsWith('*')) {
-        break;
-      }
+  const annotations: string[] = [];
+  const snippet = content.substring(Math.max(0, index - 3000), index);
+  const lines = snippet.split('\n').reverse();
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed === '') continue; // Skip blank lines
+    if (trimmed.startsWith('@')) {
+      annotations.unshift(trimmed);
+    } else if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/*') || trimmed.startsWith('*/')) {
+      continue; // Skip comment lines
+    } else {
+      break; // Stop on reaching actual code
     }
-    
-    return annotations;
   }
 
-  private determineClassType(annotations: string[]): string {
-    if (annotations.some(a => a.includes('Controller'))) return 'controller';
-    if (annotations.some(a => a.includes('Service'))) return 'service';
-    if (annotations.some(a => a.includes('Repository'))) return 'repository';
-    if (annotations.some(a => a.includes('Entity'))) return 'entity';
-    if (annotations.some(a => a.includes('Component'))) return 'component';
-    return 'class';
-  }
+  return annotations;
+}
+
+private determineClassType(annotations: string[]): string {
+  const normalized = annotations.map(a => a.replace('@', '').toLowerCase());
+
+  if (normalized.some(a => a.includes('restcontroller') || a.includes('controller'))) return 'controller';
+  if (normalized.some(a => a.includes('service'))) return 'service';
+  if (normalized.some(a => a.includes('repository'))) return 'repository';
+  if (normalized.some(a => a.includes('entity'))) return 'entity';
+  if (normalized.some(a => a.includes('component'))) return 'component';
+
+  return 'class';
+}
+
 
   private parseParameters(params: string): ParameterInfo[] {
     if (!params.trim()) return [];
@@ -731,7 +758,6 @@ class FinalAutoDocMCPServer {
       openaiApiKey: args.openaiApiKey,
       language: detectedConfig.language,
       framework: detectedConfig.framework,
-      complianceStandards: detectedConfig.complianceStandards,
     };
 
     const autoDoc = new AutoDocAI(config);
@@ -749,13 +775,11 @@ class FinalAutoDocMCPServer {
     language: 'java' | 'typescript' | 'python' | 'csharp';
     framework?: 'spring-boot' | 'express' | 'django' | 'dotnet';
     projectType: string;
-    complianceStandards: string[];
   } {
     const config = {
       language: 'java' as 'java' | 'typescript' | 'python' | 'csharp',
       framework: undefined as 'spring-boot' | 'express' | 'django' | 'dotnet' | undefined,
       projectType: 'unknown',
-      complianceStandards: [] as string[],
     };
 
     try {
@@ -788,32 +812,6 @@ class FinalAutoDocMCPServer {
         } else if (files.some(f => typeof f === 'string' && f.endsWith('.cs'))) {
           config.language = 'csharp';
           config.projectType = 'cs-files';
-        }
-      }
-
-      // Check for compliance indicators
-      if (fs.existsSync(path.join(projectPath, '.aspice'))) {
-        config.complianceStandards.push('ASPICE');
-      }
-      if (fs.existsSync(path.join(projectPath, '.iso26262'))) {
-        config.complianceStandards.push('ISO26262');
-      }
-
-      // Check README for compliance mentions
-      const readmeFiles = ['README.md', 'README.txt', 'readme.md'];
-      for (const readmeFile of readmeFiles) {
-        const readmePath = path.join(projectPath, readmeFile);
-        if (fs.existsSync(readmePath)) {
-          try {
-            const content = fs.readFileSync(readmePath, 'utf-8').toLowerCase();
-            if (content.includes('aspice') && !config.complianceStandards.includes('ASPICE')) {
-              config.complianceStandards.push('ASPICE');
-            }
-            if (content.includes('iso') && content.includes('26262') && !config.complianceStandards.includes('ISO26262')) {
-              config.complianceStandards.push('ISO26262');
-            }
-          } catch {}
-          break;
         }
       }
     } catch (error) {
@@ -874,15 +872,15 @@ class FinalAutoDocMCPServer {
 // Main execution
 async function main(): Promise<void> {
   try {
-    console.error('🔧 Starting AutoDoc.AI MCP Server...');
-    console.error('📍 Current directory:', process.cwd());
-    console.error('🐛 Node version:', process.version);
+    console.info('🔧 Starting AutoDoc.AI MCP Server...');
+    console.info('📍 Current directory:', process.cwd());
+    console.info('🐛 Node version:', process.version);
     
     const server = new FinalAutoDocMCPServer();
-    console.error('✅ Server instance created');
+    console.info('✅ Server instance created');
     
     await server.run();
-    console.error('🚀 Server.run() completed');
+    console.info('🚀 Sucessfully launched MCP server');
   } catch (error) {
     console.error('❌ Failed to start MCP server:', error);
     process.exit(1);
