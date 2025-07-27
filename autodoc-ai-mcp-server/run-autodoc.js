@@ -16,7 +16,7 @@ const request = {
       framework: 'spring-boot',
       outputPath: '../generated-docs',
       //openaiApiKey: process.env.OPENAI_API_KEY,
-      openaiApiKey: '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',
+      openaiApiKey: '',
     }
   }
 };
