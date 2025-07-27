@@ -15,7 +15,8 @@ const request = {
       language: 'java',
       framework: 'spring-boot',
       outputPath: '../generated-docs',
-      openaiApiKey: process.env.OPENAI_API_KEY,
+      //openaiApiKey: process.env.OPENAI_API_KEY,
+      openaiApiKey: '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',
     }
   }
 };
@@ -29,18 +30,21 @@ server.stdout.on('data', (data) => {
   responseBuffer += text;
   console.log('Response from server:\n', text);
 
-  // Detect if response is a complete JSON-RPC response
-  try {
-    const parsed = JSON.parse(responseBuffer);
-    if (parsed.jsonrpc && parsed.id === 2) {
-      console.log('✅ Documentation generation completed.');
-
-      // Gracefully close stdin and kill the process
-      server.stdin.end();
-      server.kill();
+  // Try to extract and parse all complete JSON objects in the buffer
+  let startIdx = responseBuffer.indexOf('{');
+  let endIdx = responseBuffer.lastIndexOf('}');
+  if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+    const possibleJson = responseBuffer.substring(startIdx, endIdx + 1);
+    try {
+      const parsed = JSON.parse(possibleJson);
+      if (parsed.jsonrpc && parsed.id === 2) {
+        console.log('✅ Documentation generation completed.');
+        server.stdin.end();
+        server.kill();
+      }
+    } catch (err) {
+      // Not a valid JSON yet, wait for more data
     }
-  } catch (err) {
-    // Wait for more data (response not fully received yet)
   }
 });
 
