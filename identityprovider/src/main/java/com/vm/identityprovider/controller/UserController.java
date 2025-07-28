@@ -27,21 +27,25 @@ public class UserController {
     private JWTService jwtService;
 
     @GetMapping("/home")
-    public String greet(){
+    public String greet() {
         return "Welcome to proto-calls";
     }
 
+    @GetMapping("/homeee")
+    public String greet2() {
+        return "Welcome to proto-calls2";
+    }
+
     @PostMapping("/register")
-    public Users registerUser(@RequestBody final Users user){
+    public Users registerUser(@RequestBody final Users user) {
         return userService.register(user);
     }
 
     @PostMapping("/login")
-    public ResponseEntity<Object> login(@RequestBody final Users user){
+    public ResponseEntity<Object> login(@RequestBody final Users user) {
 
-        final Authentication authentication =
-                authManager.authenticate(
-                        new UsernamePasswordAuthenticationToken(user.getUsername(), user.getPassword()));
+        final Authentication authentication = authManager.authenticate(
+                new UsernamePasswordAuthenticationToken(user.getUsername(), user.getPassword()));
 
         if (authentication.isAuthenticated()) {
             final String token = jwtService.generateToken(user.getUsername());

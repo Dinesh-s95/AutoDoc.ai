@@ -760,7 +760,7 @@ class JavaDocumentationMCPServer {
       pipelineResults.push('✅ Documentation is up-to-date (skipped regeneration)');
     }
 
-    this.logInfo('\n✅ Full pipeline completed successfully, good to shutdown MCP server');
+    this.logInfo('\n✅ Full pipeline completed successfully');
 
     return {
       content: [
@@ -1167,20 +1167,20 @@ The YAML should be production-ready and importable into tools like Swagger UI, P
 
 // Main execution
 async function main() {
-  console.error('🔧 Starting AutoDoc.AI MCP Server...');
-  console.error(`📍 Current directory: ${process.cwd()}`);
-  console.error(`🐛 Node version: ${process.version}`);
+  console.error('\n🔧 Starting AutoDoc.AI MCP Server...');
+  console.info(`📍 Current directory: ${process.cwd()}`);
+  console.info(`🐛 Node version: ${process.version}`);
   
   const server = new JavaDocumentationMCPServer();
-  console.error('✅ Server instance created');
-  console.error('🚀 Sucessfully launched MCP server');
+  console.info('✅ Server instance created');
+  console.info('🚀 Sucessfully launched MCP server');
   
   await server.run();
 }
 
 // Handle graceful shutdown
 process.on('SIGINT', async () => {
-  console.error('🛑 Shutting down...');
+  console.info('🛑 Shutting down...');
   process.exit(0);
 });
 

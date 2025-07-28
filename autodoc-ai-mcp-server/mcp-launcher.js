@@ -12,8 +12,9 @@ const __dirname = path.dirname(__filename);
 const CONFIG = {
   // OpenAI Configuration
   openai: {
-    apiKey: process.env.OPENAI_API_KEY, // Replace with your actual API key
-    model: 'deepseek/deepseek-chat-v3-0324:free', // gpt-4, gpt-4-turbo or 'gpt-3.5-turbo' for faster/cheaper option
+    //apiKey: process.env.OPENAI_API_KEY, // Replace with your actual API key
+    apiKey : '',
+    model: 'openai/gpt-3.5-turbo', // gpt-4, gpt-4-turbo or 'gpt-3.5-turbo' for faster/cheaper option
   },
   
   // Project paths
@@ -110,7 +111,6 @@ class MCPServerLauncher {
       const onData = (data) => {
         const message = data.toString();
         output += message;
-        // console.log('📄 Server:', message.trim());
         if (!ready && (message.includes('tools registered') || message.includes('Ready to generate AI-enhanced documentation') || message.includes('MCP 1.15.1 tools registered'))) {
           ready = true;
           const pipelineCommand = JSON.stringify({
@@ -241,6 +241,105 @@ class MCPServerLauncher {
       console.error('❌ Error reading output directory:', error.message);
     }
   }
+
+  async processAllServices() {
+    // List of all services
+    const services = [
+      { name: 'identityprovider', path: '../identityprovider' },
+      { name: 'enrollment', path: '../enrollment' },
+      { name: 'usermanagement', path: '../usermanagement' },
+      { name: 'vehiclemanagement', path: '../vehiclemanagement' }
+    ];
+
+    const totalServices = services.length;
+    const results = {
+      successful: [],
+      failed: []
+    };
+
+    console.log(`\n🚀 Starting documentation generation for ${totalServices} services\n`);
+    console.log('=' .repeat(60));
+
+    for (let i = 0; i < services.length; i++) {
+      const svc = services[i];
+      const currentIndex = i + 1;
+      
+      console.log(`\n📦 Generating docs for [${currentIndex}/${totalServices}]: ${svc.name}`);
+      console.log('-'.repeat(50));
+      
+      // Update config for this service
+      const originalMicroservicePath = this.config.paths.microservicePath;
+      const originalOutputPath = this.config.paths.outputPath;
+      
+      this.config.paths.microservicePath = svc.path;
+      this.config.paths.outputPath = `${svc.path}/documentation`;
+      
+      const startTime = Date.now();
+      
+      try {
+        await this.validateConfiguration();
+        await this.generateInitialDocumentation();
+        
+        const duration = Math.round((Date.now() - startTime) / 1000);
+        console.log(`✅ [${currentIndex}/${totalServices}] ${svc.name} completed successfully (${duration}s)`);
+        
+        results.successful.push({
+          name: svc.name,
+          duration: duration,
+          outputPath: this.config.paths.outputPath
+        });
+        
+      } catch (err) {
+        const duration = Math.round((Date.now() - startTime) / 1000);
+        console.error(`❌ [${currentIndex}/${totalServices}] ${svc.name} failed after ${duration}s:`, err.message);
+        
+        results.failed.push({
+          name: svc.name,
+          error: err.message,
+          duration: duration
+        });
+      }
+      
+      // Restore original config
+      this.config.paths.microservicePath = originalMicroservicePath;
+      this.config.paths.outputPath = originalOutputPath;
+    }
+
+    // Display final summary
+    this.displayFinalSummary(results, totalServices);
+  }
+
+  displayFinalSummary(results, totalServices) {
+    console.log('\n' + '='.repeat(60));
+    console.log('📊 FINAL SUMMARY');
+    console.log('='.repeat(60));
+    
+    console.log(`\n📈 Total Services: ${totalServices}`);
+    console.log(`✅ Successful: ${results.successful.length}`);
+    console.log(`❌ Failed: ${results.failed.length}`);
+    
+    if (results.successful.length > 0) {
+      console.log('\n✅ Successfully Processed Services:');
+      results.successful.forEach((svc, index) => {
+        console.log(`   ${index + 1}. ${svc.name} (${svc.duration}s) → ${svc.outputPath}`);
+      });
+    }
+    
+    if (results.failed.length > 0) {
+      console.log('\n❌ Failed Services:');
+      results.failed.forEach((svc, index) => {
+        console.log(`   ${index + 1}. ${svc.name} (${svc.duration}s) - ${svc.error}`);
+      });
+    }
+    
+    const totalTime = results.successful.reduce((sum, svc) => sum + svc.duration, 0) + 
+                     results.failed.reduce((sum, svc) => sum + svc.duration, 0);
+    
+    console.log(`\n⏱️  Total Processing Time: ${Math.round(totalTime)}s`);
+    console.log(`📊 Success Rate: ${Math.round((results.successful.length / totalServices) * 100)}%`);
+    
+    console.log('\n' + '='.repeat(60));
+  }
 }
 
 // Main execution function
@@ -265,7 +364,12 @@ async function main() {
         await launcher.displayResults();
         process.exit(0);
         break;
-        
+
+      case 'all':
+        await launcher.processAllServices();
+        process.exit(0);
+        break;
+
       case 'server':
         console.log('🚀 Running in interactive server mode...\n');
         console.log('💡 The server is now running and ready to accept MCP requests');
@@ -273,15 +377,16 @@ async function main() {
         console.log('⏹️  Press Ctrl+C to stop the server\n');
         await launcher.startInteractiveModeServer();
         break;
-        
+
       case 'config':
         console.log('⚙️  Current Configuration:');
         console.log(JSON.stringify(CONFIG, null, 2));
         break;
-        
+
       default:
         console.log('📖 Usage:');
         console.log('  node launcher.js generate  - Generate documentation and exit');
+        console.log('  node launcher.js all       - Generate documentation for all services');
         console.log('  node launcher.js server    - Start interactive MCP server');
         console.log('  node launcher.js config    - Display current configuration');
         console.log('\n💡 Edit the CONFIG object in this file to customize settings');
