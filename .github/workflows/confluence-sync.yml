@@ -11,181 +11,199 @@ jobs:
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
-    
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-    
-    - name: Install dependencies
-      run: |
-        npm install -g @atlassian/confluence-cli
-        sudo apt-get update
-        sudo apt-get install -y curl jq
-    
-    - name: Find documentation files
-      id: find-docs
-      run: |
-        # Find markdown files (documentation)
-        DOCS=$(find . -name "*.md" -not -path "./node_modules/*" -not -path "./.git/*" | head -10)
-        echo "Found documentation files:"
-        echo "$DOCS"
-        echo "docs_files<<EOF" >> $GITHUB_OUTPUT
-        echo "$DOCS" >> $GITHUB_OUTPUT
-        echo "EOF" >> $GITHUB_OUTPUT
-        
-        # Find PlantUML files
-        PUML=$(find . -name "*.puml" -o -name "*.plantuml" -not -path "./node_modules/*" -not -path "./.git/*" | head -10)
-        echo "Found PlantUML files:"
-        echo "$PUML"
-        echo "puml_files<<EOF" >> $GITHUB_OUTPUT
-        echo "$PUML" >> $GITHUB_OUTPUT
-        echo "EOF" >> $GITHUB_OUTPUT
-    
-    - name: Convert PlantUML to images
-      if: steps.find-docs.outputs.puml_files != ''
-      run: |
-        # Install PlantUML
-        wget -O plantuml.jar http://sourceforge.net/projects/plantuml/files/plantuml.jar/download
-        
-        # Convert each .puml file to PNG
-        while IFS= read -r file; do
-          if [ -n "$file" ]; then
-            echo "Converting $file to PNG..."
-            java -jar plantuml.jar -tpng "$file"
-          fi
-        done <<< "${{ steps.find-docs.outputs.puml_files }}"
-    
-    - name: Prepare content for Confluence
-      id: prepare-content
-      run: |
-        # Create a combined markdown content
-        echo "# Documentation Update - PR #${{ github.event.pull_request.number }}" > combined_content.md
-        echo "" >> combined_content.md
-        echo "**Updated:** $(date)" >> combined_content.md
-        echo "**PR:** ${{ github.event.pull_request.title }}" >> combined_content.md
-        echo "**Author:** ${{ github.event.pull_request.user.login }}" >> combined_content.md
-        echo "" >> combined_content.md
-        echo "---" >> combined_content.md
-        echo "" >> combined_content.md
-        
-        # Add documentation files content
-        while IFS= read -r file; do
-          if [ -n "$file" ] && [ -f "$file" ]; then
-            echo "## $(basename "$file")" >> combined_content.md
-            echo "" >> combined_content.md
-            cat "$file" >> combined_content.md
-            echo "" >> combined_content.md
-            echo "---" >> combined_content.md
-            echo "" >> combined_content.md
-          fi
-        done <<< "${{ steps.find-docs.outputs.docs_files }}"
-        
-        # Convert markdown to Confluence wiki markup (basic conversion)
-        sed -i 's/^# /h1. /g' combined_content.md
-        sed -i 's/^## /h2. /g' combined_content.md
-        sed -i 's/^### /h3. /g' combined_content.md
-        sed -i 's/\*\*\(.*\)\*\*/\*\1\*/g' combined_content.md
-        
-        echo "Content prepared successfully"
-    
-    - name: Upload to Confluence
-      env:
-        CONFLUENCE_URL: "https://sharan99r.atlassian.net"
-        CONFLUENCE_USER: "${{ secrets.CONFLUENCE_USER }}"  # Add your email as a secret
-        CONFLUENCE_API_TOKEN: "ATATT3xFfGF0YEQDKHLV0oermB28ByBuIADqdGqjym2PvYoOQc3Xg_z0fwGiucI2El0RaQGFSFFxEpXgH1SqtyWyvOc7sqoOuPVxCe033l-1-c6_glF5CWf1M7qe5o7nFAbwK4Abwa-at7XCewkcAJbfn7jCu53CnQYbPNfzFPlrAK-LzqdJCt8=E58519F7"
-        PAGE_ID: "819213"
-      run: |
-        # Get current page content
-        CURRENT_CONTENT=$(curl -s -u "$CONFLUENCE_USER:$CONFLUENCE_API_TOKEN" \
-          -X GET \
-          "$CONFLUENCE_URL/wiki/rest/api/content/$PAGE_ID?expand=body.storage,version" \
-          -H "Accept: application/json")
-        
-        # Extract current version
-        CURRENT_VERSION=$(echo "$CURRENT_CONTENT" | jq -r '.version.number')
-        NEW_VERSION=$((CURRENT_VERSION + 1))
-        
-        # Prepare new content (append to existing)
-        NEW_CONTENT="<h2>Latest Update - $(date)</h2><p><strong>PR #${{ github.event.pull_request.number }}:</strong> ${{ github.event.pull_request.title }}</p><p><strong>Author:</strong> ${{ github.event.pull_request.user.login }}</p><hr/>"
-        
-        # Add documentation content
-        while IFS= read -r file; do
-          if [ -n "$file" ] && [ -f "$file" ]; then
-            NEW_CONTENT+="<h3>$(basename "$file")</h3><pre><code>$(cat "$file" | sed 's/</\&lt;/g' | sed 's/>/\&gt;/g')</code></pre>"
-          fi
-        done <<< "${{ steps.find-docs.outputs.docs_files }}"
-        
-        # Get existing content and prepend new content
-        EXISTING_CONTENT=$(echo "$CURRENT_CONTENT" | jq -r '.body.storage.value')
-        COMBINED_CONTENT="$NEW_CONTENT<hr/>$EXISTING_CONTENT"
-        
-        # Update the page
-        curl -u "$CONFLUENCE_USER:$CONFLUENCE_API_TOKEN" \
-          -X PUT \
-          "$CONFLUENCE_URL/wiki/rest/api/content/$PAGE_ID" \
-          -H "Accept: application/json" \
-          -H "Content-Type: application/json" \
-          -d "{
-            \"version\": {
-              \"number\": $NEW_VERSION
-            },
-            \"title\": \"automation Published\",
-            \"type\": \"page\",
-            \"body\": {
-              \"storage\": {
-                \"value\": \"$COMBINED_CONTENT\",
-                \"representation\": \"storage\"
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: |
+          npm install -g @atlassian/confluence-cli
+          sudo apt-get update
+          sudo apt-get install -y curl jq
+
+      - name: Find documentation files
+        id: find-docs
+        run: |
+          # Find markdown and AsciiDoc files from specific documentation directories
+          echo "Finding documentation files in specific directories..."
+          
+          # Look for files in documentation directories
+          DOCS=$(find ./identityprovider/documentation ./autodoc-ai-mcp-server/docs ./autodoc-agent/target \
+                 -name "*.md" -o -name "*.adoc" 2>/dev/null | head -10)
+          
+          # Also include any root-level documentation
+          ROOT_DOCS=$(find . -maxdepth 1 -name "*.md" -o -name "*.adoc" 2>/dev/null)
+          
+          # Combine results
+          ALL_DOCS=$(echo -e "$DOCS\n$ROOT_DOCS" | grep -v "^$" | sort | uniq | head -15)
+          
+          echo "Found documentation files:"
+          echo "$ALL_DOCS"
+          echo "docs_files<<EOF" >> $GITHUB_OUTPUT
+          echo "$ALL_DOCS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+          # Find PlantUML files in documentation directories
+          PUML=$(find ./identityprovider/documentation ./autodoc-ai-mcp-server/docs ./autodoc-agent/target \
+                 -name "*.puml" -o -name "*.plantuml" 2>/dev/null | head -10)
+          echo "Found PlantUML files:"
+          echo "$PUML"
+          echo "puml_files<<EOF" >> $GITHUB_OUTPUT
+          echo "$PUML" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Convert PlantUML to images
+        if: steps.find-docs.outputs.puml_files != ''
+        run: |
+          # Install PlantUML
+          wget -O plantuml.jar http://sourceforge.net/projects/plantuml/files/plantuml.jar/download
+          
+          # Convert each .puml file to PNG
+          while IFS= read -r file; do
+            if [ -n "$file" ]; then
+              echo "Converting $file to PNG..."
+              java -jar plantuml.jar -tpng "$file"
+            fi
+          done <<< "${{ steps.find-docs.outputs.puml_files }}"
+
+      - name: Prepare content for Confluence
+        id: prepare-content
+        run: |
+          # Create a combined markdown content
+          echo "# Documentation Update - PR #${{ github.event.pull_request.number }}" > combined_content.md
+          echo "" >> combined_content.md
+          echo "**Updated:** $(date '+%B %d, %Y at %H:%M UTC')" >> combined_content.md
+          echo "**PR:** ${{ github.event.pull_request.title }}" >> combined_content.md
+          echo "**Author:** ${{ github.event.pull_request.user.login }}" >> combined_content.md
+          echo "" >> combined_content.md
+          echo "---" >> combined_content.md
+          echo "" >> combined_content.md
+          
+          # Add documentation files content
+          while IFS= read -r file; do
+            if [ -n "$file" ] && [ -f "$file" ]; then
+              echo "## $(basename "$file")" >> combined_content.md
+              echo "" >> combined_content.md
+              cat "$file" >> combined_content.md
+              echo "" >> combined_content.md
+              echo "---" >> combined_content.md
+              echo "" >> combined_content.md
+            fi
+          done <<< "${{ steps.find-docs.outputs.docs_files }}"
+          
+          # Convert markdown to Confluence wiki markup (basic conversion)
+          sed -i 's/^# /h1. /g' combined_content.md
+          sed -i 's/^## /h2. /g' combined_content.md
+          sed -i 's/^### /h3. /g' combined_content.md
+          sed -i 's/\*\*\(.*\)\*\*/\*\1\*/g' combined_content.md
+          
+          echo "Content prepared successfully"
+
+      - name: Upload to Confluence
+        env:
+          CONFLUENCE_URL: "https://sharan99r.atlassian.net"
+          CONFLUENCE_USER: "${{ secrets.CONFLUENCE_USER }}"  # Add your email as a secret
+          CONFLUENCE_API_TOKEN: "ATATT3xFfGF0YEQDKHLV0oermB28ByBuIADqdGqjym2PvYoOQc3Xg_z0fwGiucI2El0RaQGFSFFxEpXgH1SqtyWyvOc7sqoOuPVxCe033l-1-c6_glF5CWf1M7qe5o7nFAbwK4Abwa-at7XCewkcAJbfn7jCu53CnQYbPNfzFPlrAK-LzqdJCt8=E58519F7"
+          PAGE_ID: "819213"
+        run: |
+          # Get current page content
+          CURRENT_CONTENT=$(curl -s -u "$CONFLUENCE_USER:$CONFLUENCE_API_TOKEN" \
+            -X GET \
+            "$CONFLUENCE_URL/wiki/rest/api/content/$PAGE_ID?expand=body.storage,version" \
+            -H "Accept: application/json")
+          
+          # Extract current version
+          CURRENT_VERSION=$(echo "$CURRENT_CONTENT" | jq -r '.version.number')
+          NEW_VERSION=$((CURRENT_VERSION + 1))
+          
+          # Prepare new content (append to existing)
+          CURRENT_TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S UTC')
+          NEW_CONTENT="<h2>Latest Update - $CURRENT_TIMESTAMP</h2><p><strong>PR #${{ github.event.pull_request.number }}:</strong> ${{ github.event.pull_request.title }}</p><p><strong>Author:</strong> ${{ github.event.pull_request.user.login }}</p><p><strong>Merged:</strong> $(date '+%B %d, %Y at %H:%M UTC')</p><hr/>"
+          
+          # Add documentation content
+          while IFS= read -r file; do
+            if [ -n "$file" ] && [ -f "$file" ]; then
+              NEW_CONTENT+="<h3>$(basename "$file")</h3><pre><code>$(cat "$file" | sed 's/</\&lt;/g' | sed 's/>/\&gt;/g')</code></pre>"
+            fi
+          done <<< "${{ steps.find-docs.outputs.docs_files }}"
+          
+          # Get existing content and prepend new content
+          EXISTING_CONTENT=$(echo "$CURRENT_CONTENT" | jq -r '.body.storage.value')
+          COMBINED_CONTENT="$NEW_CONTENT<hr/>$EXISTING_CONTENT"
+          
+          # Update the page
+          curl -u "$CONFLUENCE_USER:$CONFLUENCE_API_TOKEN" \
+            -X PUT \
+            "$CONFLUENCE_URL/wiki/rest/api/content/$PAGE_ID" \
+            -H "Accept: application/json" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"version\": {
+                \"number\": $NEW_VERSION
+              },
+              \"title\": \"automation Published\",
+              \"type\": \"page\",
+              \"body\": {
+                \"storage\": {
+                  \"value\": \"$COMBINED_CONTENT\",
+                  \"representation\": \"storage\"
+                }
               }
-            }
-          }"
-    
-    - name: Upload PlantUML diagrams as attachments
-      if: steps.find-docs.outputs.puml_files != ''
-      env:
-        CONFLUENCE_URL: "https://sharan99r.atlassian.net"
-        CONFLUENCE_USER: "${{ secrets.CONFLUENCE_USER }}"
-        CONFLUENCE_API_TOKEN: "ATATT3xFfGF0YEQDKHLV0oermB28ByBuIADqdGqjym2PvYoOQc3Xg_z0fwGiucI2El0RaQGFSFFxEpXgH1SqtyWyvOc7sqoOuPVxCe033l-1-c6_glF5CWf1M7qe5o7nFAbwK4Abwa-at7XCewkcAJbfn7jCu53CnQYbPNfzFPlrAK-LzqdJCt8=E58519F7"
-        PAGE_ID: "819213"
-      run: |
-        # Upload PNG files generated from PlantUML
-        find . -name "*.png" -not -path "./node_modules/*" -not -path "./.git/*" | while read -r png_file; do
-          if [ -n "$png_file" ] && [ -f "$png_file" ]; then
-            echo "Uploading $png_file as attachment..."
-            curl -u "$CONFLUENCE_USER:$CONFLUENCE_API_TOKEN" \
-              -X POST \
-              "$CONFLUENCE_URL/wiki/rest/api/content/$PAGE_ID/child/attachment" \
-              -H "X-Atlassian-Token: no-check" \
-              -F "file=@$png_file" \
-              -F "comment=PlantUML diagram from PR #${{ github.event.pull_request.number }}"
-          fi
-        done
-    
-    - name: Post success comment
-      if: success()
-      uses: actions/github-script@v7
-      with:
-        script: |
-          github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: '✅ Documentation and diagrams have been successfully updated in Confluence!\n\n🔗 [View in Confluence](https://sharan99r.atlassian.net/wiki/spaces/~712020a1106f7965b7429fa169a05d4788f4d5/pages/819213/automation+Published)'
-          })
-    
-    - name: Post failure comment
-      if: failure()
-      uses: actions/github-script@v7
-      with:
-        script: |
-          github.rest.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: '❌ Failed to update documentation in Confluence. Please check the workflow logs for details.'
-          })
+            }"
+
+      - name: Upload PlantUML diagrams as attachments
+        if: steps.find-docs.outputs.puml_files != ''
+        env:
+          CONFLUENCE_URL: "https://sharan99r.atlassian.net"
+          CONFLUENCE_USER: "${{ secrets.CONFLUENCE_USER }}"
+          CONFLUENCE_API_TOKEN: "ATATT3xFfGF0YEQDKHLV0oermB28ByBuIADqdGqjym2PvYoOQc3Xg_z0fwGiucI2El0RaQGFSFFxEpXgH1SqtyWyvOc7sqoOuPVxCe033l-1-c6_glF5CWf1M7qe5o7nFAbwK4Abwa-at7XCewkcAJbfn7jCu53CnQYbPNfzFPlrAK-LzqdJCt8=E58519F7"
+          PAGE_ID: "819213"
+        run: |
+          # Upload PNG files generated from PlantUML
+          find . -name "*.png" -not -path "./node_modules/*" -not -path "./.git/*" | while read -r png_file; do
+            if [ -n "$png_file" ] && [ -f "$png_file" ]; then
+              echo "Uploading $png_file as attachment..."
+              curl -u "$CONFLUENCE_USER:$CONFLUENCE_API_TOKEN" \
+                -X POST \
+                "$CONFLUENCE_URL/wiki/rest/api/content/$PAGE_ID/child/attachment" \
+                -H "X-Atlassian-Token: no-check" \
+                -F "file=@$png_file" \
+                -F "comment=PlantUML diagram from PR #${{ github.event.pull_request.number }}"
+            fi
+          done
+
+      - name: Post success comment
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: ${{ github.event.pull_request.number }},
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '✅ Documentation and diagrams have been successfully updated in Confluence!\n\n🔗 [View in Confluence](https://sharan99r.atlassian.net/wiki/spaces/~712020a1106f7965b7429fa169a05d4788f4d5/pages/819213/automation+Published)'
+            })
+
+      - name: Post failure comment
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: ${{ github.event.pull_request.number }},
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '❌ Failed to update documentation in Confluence. Please check the workflow logs for details.'
+            })
