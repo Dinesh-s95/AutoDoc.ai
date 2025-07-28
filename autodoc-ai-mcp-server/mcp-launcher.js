@@ -12,7 +12,8 @@ const __dirname = path.dirname(__filename);
 const CONFIG = {
   // OpenAI Configuration
   openai: {
-    apiKey: process.env.OPENAI_API_KEY, // Replace with your actual API key
+    //apiKey: process.env.OPENAI_API_KEY, // Replace with your actual API key
+    apiKey : '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',
     model: 'deepseek/deepseek-chat-v3-0324:free', // gpt-4, gpt-4-turbo or 'gpt-3.5-turbo' for faster/cheaper option
   },
   
@@ -110,7 +111,6 @@ class MCPServerLauncher {
       const onData = (data) => {
         const message = data.toString();
         output += message;
-        // console.log('📄 Server:', message.trim());
         if (!ready && (message.includes('tools registered') || message.includes('Ready to generate AI-enhanced documentation') || message.includes('MCP 1.15.1 tools registered'))) {
           ready = true;
           const pipelineCommand = JSON.stringify({
@@ -265,7 +265,31 @@ async function main() {
         await launcher.displayResults();
         process.exit(0);
         break;
-        
+
+      case 'all':
+        // List of all services
+        const services = [
+          { name: 'identityprovider', path: '../identityprovider' },
+          { name: 'enrollment', path: '../enrollment' },
+          { name: 'usermanagement', path: '../usermanagement' },
+          { name: 'vehiclemanagement', path: '../vehiclemanagement' }
+        ];
+        for (const svc of services) {
+          console.log(`\n============================\n📦 Generating docs for: ${svc.name}\n============================`);
+          // Update config for this service
+          launcher.config.paths.microservicePath = svc.path;
+          launcher.config.paths.outputPath = `${svc.path}/documentation`;
+          try {
+            await launcher.validateConfiguration();
+            await launcher.generateInitialDocumentation();
+            await launcher.displayResults();
+          } catch (err) {
+            console.error(`❌ Error for ${svc.name}:`, err.message);
+          }
+        }
+        process.exit(0);
+        break;
+
       case 'server':
         console.log('🚀 Running in interactive server mode...\n');
         console.log('💡 The server is now running and ready to accept MCP requests');
@@ -273,15 +297,16 @@ async function main() {
         console.log('⏹️  Press Ctrl+C to stop the server\n');
         await launcher.startInteractiveModeServer();
         break;
-        
+
       case 'config':
         console.log('⚙️  Current Configuration:');
         console.log(JSON.stringify(CONFIG, null, 2));
         break;
-        
+
       default:
         console.log('📖 Usage:');
         console.log('  node launcher.js generate  - Generate documentation and exit');
+        console.log('  node launcher.js all       - Generate documentation for all services');
         console.log('  node launcher.js server    - Start interactive MCP server');
         console.log('  node launcher.js config    - Display current configuration');
         console.log('\n💡 Edit the CONFIG object in this file to customize settings');
