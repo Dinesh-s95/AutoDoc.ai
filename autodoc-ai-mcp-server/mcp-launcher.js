@@ -14,7 +14,7 @@ const CONFIG = {
   openai: {
     apiKey: process.env.OPENAI_API_KEY, // Replace with your actual API key
     // apiKey : '',
-    model: 'openai/gpt-3.5-turbo', // gpt-4, gpt-4-turbo or 'gpt-3.5-turbo' for faster/cheaper option
+    // model: 'openai/gpt-3.5-turbo', // gpt-4, gpt-4-turbo or 'gpt-3.5-turbo' for faster/cheaper option
   },
   
   // Project paths
