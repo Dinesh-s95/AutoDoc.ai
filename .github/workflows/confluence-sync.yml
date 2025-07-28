@@ -11,6 +11,11 @@ jobs:
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
+    
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
@@ -31,16 +36,28 @@ jobs:
     - name: Find documentation files
       id: find-docs
       run: |
-        # Find markdown files (documentation)
-        DOCS=$(find . -name "*.md" -not -path "./node_modules/*" -not -path "./.git/*" | head -10)
+        # Find markdown and AsciiDoc files from specific documentation directories
+        echo "Finding documentation files in specific directories..."
+        
+        # Look for files in documentation directories
+        DOCS=$(find ./identityprovider/documentation ./autodoc-ai-mcp-server/docs ./autodoc-agent/target \
+               -name "*.md" -o -name "*.adoc" 2>/dev/null | head -10)
+        
+        # Also include any root-level documentation
+        ROOT_DOCS=$(find . -maxdepth 1 -name "*.md" -o -name "*.adoc" 2>/dev/null)
+        
+        # Combine results
+        ALL_DOCS=$(echo -e "$DOCS\n$ROOT_DOCS" | grep -v "^$" | sort | uniq | head -15)
+        
         echo "Found documentation files:"
-        echo "$DOCS"
+        echo "$ALL_DOCS"
         echo "docs_files<<EOF" >> $GITHUB_OUTPUT
-        echo "$DOCS" >> $GITHUB_OUTPUT
+        echo "$ALL_DOCS" >> $GITHUB_OUTPUT
         echo "EOF" >> $GITHUB_OUTPUT
         
-        # Find PlantUML files
-        PUML=$(find . -name "*.puml" -o -name "*.plantuml" -not -path "./node_modules/*" -not -path "./.git/*" | head -10)
+        # Find PlantUML files in documentation directories
+        PUML=$(find ./identityprovider/documentation ./autodoc-ai-mcp-server/docs ./autodoc-agent/target \
+               -name "*.puml" -o -name "*.plantuml" 2>/dev/null | head -10)
         echo "Found PlantUML files:"
         echo "$PUML"
         echo "puml_files<<EOF" >> $GITHUB_OUTPUT
@@ -67,7 +84,7 @@ jobs:
         # Create a combined markdown content
         echo "# Documentation Update - PR #${{ github.event.pull_request.number }}" > combined_content.md
         echo "" >> combined_content.md
-        echo "**Updated:** $(date)" >> combined_content.md
+        echo "**Updated:** $(date '+%B %d, %Y at %H:%M UTC')" >> combined_content.md
         echo "**PR:** ${{ github.event.pull_request.title }}" >> combined_content.md
         echo "**Author:** ${{ github.event.pull_request.user.login }}" >> combined_content.md
         echo "" >> combined_content.md
@@ -112,7 +129,8 @@ jobs:
         NEW_VERSION=$((CURRENT_VERSION + 1))
         
         # Prepare new content (append to existing)
-        NEW_CONTENT="<h2>Latest Update - $(date)</h2><p><strong>PR #${{ github.event.pull_request.number }}:</strong> ${{ github.event.pull_request.title }}</p><p><strong>Author:</strong> ${{ github.event.pull_request.user.login }}</p><hr/>"
+        CURRENT_TIMESTAMP=$(date '+%Y-%m-%d %H:%M:%S UTC')
+        NEW_CONTENT="<h2>Latest Update - $CURRENT_TIMESTAMP</h2><p><strong>PR #${{ github.event.pull_request.number }}:</strong> ${{ github.event.pull_request.title }}</p><p><strong>Author:</strong> ${{ github.event.pull_request.user.login }}</p><p><strong>Merged:</strong> $(date '+%B %d, %Y at %H:%M UTC')</p><hr/>"
         
         # Add documentation content
         while IFS= read -r file; do
@@ -172,7 +190,7 @@ jobs:
       with:
         script: |
           github.rest.issues.createComment({
-            issue_number: context.issue.number,
+            issue_number: ${{ github.event.pull_request.number }},
             owner: context.repo.owner,
             repo: context.repo.repo,
             body: '✅ Documentation and diagrams have been successfully updated in Confluence!\n\n🔗 [View in Confluence](https://sharan99r.atlassian.net/wiki/spaces/~712020a1106f7965b7429fa169a05d4788f4d5/pages/819213/automation+Published)'
@@ -184,7 +202,7 @@ jobs:
       with:
         script: |
           github.rest.issues.createComment({
-            issue_number: context.issue.number,
+            issue_number: ${{ github.event.pull_request.number }},
             owner: context.repo.owner,
             repo: context.repo.repo,
             body: '❌ Failed to update documentation in Confluence. Please check the workflow logs for details.'
