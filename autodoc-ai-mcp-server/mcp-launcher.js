@@ -13,8 +13,8 @@ const CONFIG = {
   // OpenAI Configuration
   openai: {
     //apiKey: process.env.OPENAI_API_KEY, // Replace with your actual API key
-    apiKey : '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',
-    model: 'deepseek/deepseek-chat-v3-0324:free', // gpt-4, gpt-4-turbo or 'gpt-3.5-turbo' for faster/cheaper option
+    apiKey : '',
+    model: 'openai/gpt-3.5-turbo', // gpt-4, gpt-4-turbo or 'gpt-3.5-turbo' for faster/cheaper option
   },
   
   // Project paths
@@ -241,6 +241,105 @@ class MCPServerLauncher {
       console.error('❌ Error reading output directory:', error.message);
     }
   }
+
+  async processAllServices() {
+    // List of all services
+    const services = [
+      { name: 'identityprovider', path: '../identityprovider' },
+      { name: 'enrollment', path: '../enrollment' },
+      { name: 'usermanagement', path: '../usermanagement' },
+      { name: 'vehiclemanagement', path: '../vehiclemanagement' }
+    ];
+
+    const totalServices = services.length;
+    const results = {
+      successful: [],
+      failed: []
+    };
+
+    console.log(`\n🚀 Starting documentation generation for ${totalServices} services\n`);
+    console.log('=' .repeat(60));
+
+    for (let i = 0; i < services.length; i++) {
+      const svc = services[i];
+      const currentIndex = i + 1;
+      
+      console.log(`\n📦 Generating docs for [${currentIndex}/${totalServices}]: ${svc.name}`);
+      console.log('-'.repeat(50));
+      
+      // Update config for this service
+      const originalMicroservicePath = this.config.paths.microservicePath;
+      const originalOutputPath = this.config.paths.outputPath;
+      
+      this.config.paths.microservicePath = svc.path;
+      this.config.paths.outputPath = `${svc.path}/documentation`;
+      
+      const startTime = Date.now();
+      
+      try {
+        await this.validateConfiguration();
+        await this.generateInitialDocumentation();
+        
+        const duration = Math.round((Date.now() - startTime) / 1000);
+        console.log(`✅ [${currentIndex}/${totalServices}] ${svc.name} completed successfully (${duration}s)`);
+        
+        results.successful.push({
+          name: svc.name,
+          duration: duration,
+          outputPath: this.config.paths.outputPath
+        });
+        
+      } catch (err) {
+        const duration = Math.round((Date.now() - startTime) / 1000);
+        console.error(`❌ [${currentIndex}/${totalServices}] ${svc.name} failed after ${duration}s:`, err.message);
+        
+        results.failed.push({
+          name: svc.name,
+          error: err.message,
+          duration: duration
+        });
+      }
+      
+      // Restore original config
+      this.config.paths.microservicePath = originalMicroservicePath;
+      this.config.paths.outputPath = originalOutputPath;
+    }
+
+    // Display final summary
+    this.displayFinalSummary(results, totalServices);
+  }
+
+  displayFinalSummary(results, totalServices) {
+    console.log('\n' + '='.repeat(60));
+    console.log('📊 FINAL SUMMARY');
+    console.log('='.repeat(60));
+    
+    console.log(`\n📈 Total Services: ${totalServices}`);
+    console.log(`✅ Successful: ${results.successful.length}`);
+    console.log(`❌ Failed: ${results.failed.length}`);
+    
+    if (results.successful.length > 0) {
+      console.log('\n✅ Successfully Processed Services:');
+      results.successful.forEach((svc, index) => {
+        console.log(`   ${index + 1}. ${svc.name} (${svc.duration}s) → ${svc.outputPath}`);
+      });
+    }
+    
+    if (results.failed.length > 0) {
+      console.log('\n❌ Failed Services:');
+      results.failed.forEach((svc, index) => {
+        console.log(`   ${index + 1}. ${svc.name} (${svc.duration}s) - ${svc.error}`);
+      });
+    }
+    
+    const totalTime = results.successful.reduce((sum, svc) => sum + svc.duration, 0) + 
+                     results.failed.reduce((sum, svc) => sum + svc.duration, 0);
+    
+    console.log(`\n⏱️  Total Processing Time: ${Math.round(totalTime)}s`);
+    console.log(`📊 Success Rate: ${Math.round((results.successful.length / totalServices) * 100)}%`);
+    
+    console.log('\n' + '='.repeat(60));
+  }
 }
 
 // Main execution function
@@ -267,26 +366,7 @@ async function main() {
         break;
 
       case 'all':
-        // List of all services
-        const services = [
-          { name: 'identityprovider', path: '../identityprovider' },
-          { name: 'enrollment', path: '../enrollment' },
-          { name: 'usermanagement', path: '../usermanagement' },
-          { name: 'vehiclemanagement', path: '../vehiclemanagement' }
-        ];
-        for (const svc of services) {
-          console.log(`\n============================\n📦 Generating docs for: ${svc.name}\n============================`);
-          // Update config for this service
-          launcher.config.paths.microservicePath = svc.path;
-          launcher.config.paths.outputPath = `${svc.path}/documentation`;
-          try {
-            await launcher.validateConfiguration();
-            await launcher.generateInitialDocumentation();
-            await launcher.displayResults();
-          } catch (err) {
-            console.error(`❌ Error for ${svc.name}:`, err.message);
-          }
-        }
+        await launcher.processAllServices();
         process.exit(0);
         break;
 
