@@ -12,8 +12,8 @@ const __dirname = path.dirname(__filename);
 const CONFIG = {
   // OpenAI Configuration
   openai: {
-    apiKey: '', // Replace with your actual API key
-    model: 'gpt-4', // or 'gpt-3.5-turbo' for faster/cheaper option
+    apiKey: process.env.OPENAI_API_KEY, // Replace with your actual API key
+    model: 'deepseek/deepseek-chat-v3-0324:free', // gpt-4, gpt-4-turbo or 'gpt-3.5-turbo' for faster/cheaper option
   },
   
   // Project paths
@@ -46,6 +46,12 @@ class MCPServerLauncher {
 
   async validateConfiguration() {
     console.log('🔍 Validating configuration...');
+
+      console.log('\n⚙️  Configuration Summary:');
+      console.log(`  🎯 Microservice Path: ${path.resolve(this.config.paths.microservicePath)}`);
+      console.log(`  📁 Output Path: ${path.resolve(this.config.paths.outputPath)}`);
+      console.log(`  📝 Documentation Format: ${this.config.documentation.format.toUpperCase()}`);
+      console.log(`  🤖 OpenAI Model: ${this.config.openai.model}`);
     
     // Check if OpenAI API key is set
     if (!this.config.openai.apiKey || this.config.openai.apiKey === 'sk-your-openai-api-key-here') {
@@ -55,7 +61,7 @@ class MCPServerLauncher {
     // Check if microservice path exists
     try {
       await fs.access(this.config.paths.microservicePath);
-      console.log('✅ Microservice path is accessible');
+      console.log('\n✅ Microservice path is accessible');
     } catch (error) {
       throw new Error(`❌ Microservice path not found: ${this.config.paths.microservicePath}`);
     }
@@ -77,9 +83,7 @@ class MCPServerLauncher {
     }
   }
 
-  async generateInitialDocumentation() {
-    console.log('📚 Generating initial documentation...');
-    
+  async generateInitialDocumentation() {    
     return new Promise((resolve, reject) => {
       const env = {
         ...process.env,
@@ -88,7 +92,8 @@ class MCPServerLauncher {
         MICROSERVICE_PATH: this.config.paths.microservicePath,
         OUTPUT_PATH: this.config.paths.outputPath,
         DOC_FORMAT: this.config.documentation.format,
-        LOG_LEVEL: this.config.server.logLevel
+        LOG_LEVEL: this.config.server.logLevel,
+        EXIT_ON_TOOL_COMPLETE: 'true' // Ensures server exits after tool call
         // AUTO_RUN_PIPELINE intentionally omitted to avoid double execution
       };
 
@@ -105,7 +110,7 @@ class MCPServerLauncher {
       const onData = (data) => {
         const message = data.toString();
         output += message;
-        console.log('📄 Server:', message.trim());
+        // console.log('📄 Server:', message.trim());
         if (!ready && (message.includes('tools registered') || message.includes('Ready to generate AI-enhanced documentation') || message.includes('MCP 1.15.1 tools registered'))) {
           ready = true;
           const pipelineCommand = JSON.stringify({
@@ -154,15 +159,20 @@ class MCPServerLauncher {
         }
       });
 
-      serverProcess.on('close', (code) => {
+
+      let settled = false;
+      const settle = (code) => {
+        if (settled) return;
+        settled = true;
         if (code === 0) {
-          console.log('✅ Documentation generation completed successfully');
           resolve(output);
         } else {
           console.error(`❌ Server process exited with code ${code}`);
           reject(new Error(`Server failed with exit code ${code}\nError output: ${errorOutput}`));
         }
-      });
+      };
+      serverProcess.on('close', settle);
+      serverProcess.on('exit', settle);
 
       // Set a timeout for the documentation generation
       setTimeout(() => {
@@ -215,24 +225,15 @@ class MCPServerLauncher {
   }
 
   async displayResults() {
-    console.log('\n📋 Generated Documentation Files:');
+    // console.log('\n Generated Documentation Files:');
     
-    try {
-      const files = await fs.readdir(this.config.paths.outputPath);
-      
-      for (const file of files) {
-        const filePath = path.join(this.config.paths.outputPath, file);
-        const stats = await fs.stat(filePath);
-        const sizeKB = (stats.size / 1024).toFixed(2);
-        console.log(`  📄 ${file} (${sizeKB} KB)`);
-      }
-      
-      console.log(`\n📂 All files saved to: ${path.resolve(this.config.paths.outputPath)}`);
+    try {      
+      // console.log(`\n📂 Complete destination path: ${path.resolve(this.config.paths.outputPath)}`);
       
       // Display configuration summary
       console.log('\n⚙️  Configuration Summary:');
-      console.log(`  🎯 Microservice Path: ${this.config.paths.microservicePath}`);
-      console.log(`  📁 Output Path: ${this.config.paths.outputPath}`);
+      console.log(`  🎯 Microservice Path: ${path.resolve(this.config.paths.microservicePath)}`);
+      console.log(`  📁 Output Path: ${path.resolve(this.config.paths.outputPath)}`);
       console.log(`  📝 Documentation Format: ${this.config.documentation.format.toUpperCase()}`);
       console.log(`  🤖 OpenAI Model: ${this.config.openai.model}`);
       
@@ -259,9 +260,10 @@ async function main() {
 
     switch (mode) {
       case 'generate':
-        console.log('📚 Running in documentation generation mode...\n');
+        console.log('📚 Running in detached mode...\n');
         await launcher.generateInitialDocumentation();
         await launcher.displayResults();
+        process.exit(0);
         break;
         
       case 'server':

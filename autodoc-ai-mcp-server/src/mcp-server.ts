@@ -10,6 +10,7 @@ import {
 import fs from 'fs/promises';
 import path from 'path';
 import OpenAI from 'openai';
+import crypto from 'crypto';
 
 // Interface for class summary structure
 interface ClassSummary {
@@ -33,6 +34,14 @@ interface ServerConfig {
   autoRunPipeline: boolean;
 }
 
+// Cache metadata interface
+interface CacheMetadata {
+  sourceHash: string;
+  lastUpdated: string;
+  sourceFiles: string[];
+  classCount: number;
+}
+
 class JavaDocumentationMCPServer {
   private server: Server;
   private openai: OpenAI;
@@ -42,7 +51,7 @@ class JavaDocumentationMCPServer {
     // Load configuration from environment variables
     this.config = {
       openaiApiKey: process.env.OPENAI_API_KEY || '',
-      openaiModel: process.env.OPENAI_MODEL || 'gpt-4',
+      openaiModel: process.env.OPENAI_MODEL || 'gpt-4-turbo',
       microservicePath: process.env.MICROSERVICE_PATH || '',
       outputPath: process.env.OUTPUT_PATH || './output',
       docFormat: process.env.DOC_FORMAT || 'adoc',
@@ -69,6 +78,7 @@ class JavaDocumentationMCPServer {
     }
 
     this.openai = new OpenAI({
+      baseURL: 'https://openrouter.ai/api/v1',
       apiKey: this.config.openaiApiKey,
     });
 
@@ -115,7 +125,7 @@ class JavaDocumentationMCPServer {
       const tools: Tool[] = [
         {
           name: 'analyze_java_project',
-          description: 'Analyze Java project structure and generate classes-summary.json',
+          description: 'Analyze Java project structure and generate/update classes-summary.json (with smart caching)',
           inputSchema: {
             type: 'object',
             properties: {
@@ -123,13 +133,17 @@ class JavaDocumentationMCPServer {
                 type: 'string',
                 description: 'Path to the Java project directory (optional, uses env MICROSERVICE_PATH if not provided)',
               },
+              forceRegenerate: {
+                type: 'boolean',
+                description: 'Force regeneration even if source files haven\'t changed (default: false)',
+              },
             },
             required: [],
           },
         },
         {
           name: 'generate_documentation',
-          description: 'Generate comprehensive documentation from classes-summary.json using OpenAI',
+          description: 'Generate comprehensive documentation from classes-summary.json using OpenAI (only if recently updated)',
           inputSchema: {
             type: 'object',
             properties: {
@@ -146,13 +160,17 @@ class JavaDocumentationMCPServer {
                 type: 'string',
                 description: 'Directory to save documentation (optional, uses env OUTPUT_PATH)',
               },
+              forceRegenerate: {
+                type: 'boolean',
+                description: 'Force documentation regeneration even if classes-summary.json is old (default: false)',
+              },
             },
             required: [],
           },
         },
         {
           name: 'full_pipeline',
-          description: 'Complete pipeline: analyze Java project and generate documentation',
+          description: 'Complete pipeline: analyze Java project and generate documentation (with smart caching)',
           inputSchema: {
             type: 'object',
             properties: {
@@ -169,6 +187,10 @@ class JavaDocumentationMCPServer {
                 enum: ['markdown', 'adoc'],
                 description: 'Output format for documentation (optional, uses env DOC_FORMAT)',
               },
+              forceRegenerate: {
+                type: 'boolean',
+                description: 'Force complete regeneration ignoring cache (default: false)',
+              },
             },
             required: [],
           },
@@ -179,6 +201,20 @@ class JavaDocumentationMCPServer {
           inputSchema: {
             type: 'object',
             properties: {},
+            required: [],
+          },
+        },
+        {
+          name: 'get_cache_status',
+          description: 'Get current cache status and metadata',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              projectPath: {
+                type: 'string',
+                description: 'Path to the Java project directory (optional, uses env MICROSERVICE_PATH)',
+              },
+            },
             required: [],
           },
         },
@@ -199,20 +235,27 @@ class JavaDocumentationMCPServer {
           arguments: request.params.arguments
         });
 
+        let result: CallToolResult;
         switch (request.params.name) {
           case 'analyze_java_project':
-            return await this.analyzeJavaProject(request.params.arguments);
+            result = await this.analyzeJavaProject(request.params.arguments);
+            break;
           case 'generate_documentation':
-            return await this.generateDocumentation(request.params.arguments);
+            result = await this.generateDocumentation(request.params.arguments);
+            break;
           case 'full_pipeline':
-            return await this.fullPipeline(request.params.arguments);
+            result = await this.fullPipeline(request.params.arguments);
+            break;
           case 'get_config':
-            return await this.getConfig();
+            result = await this.getConfig();
+            break;
+          case 'get_cache_status':
+            result = await this.getCacheStatus(request.params.arguments);
+            break;
           default:
-            const availableTools = ['analyze_java_project', 'generate_documentation', 'full_pipeline', 'get_config'];
+            const availableTools = ['analyze_java_project', 'generate_documentation', 'full_pipeline', 'get_config', 'get_cache_status'];
             this.logError(`Unknown tool requested: ${request.params.name}. Available tools: ${availableTools.join(', ')}`);
-            
-            return {
+            result = {
               content: [
                 {
                   type: 'text',
@@ -222,6 +265,15 @@ class JavaDocumentationMCPServer {
               isError: true,
             } satisfies CallToolResult;
         }
+
+        // If EXIT_ON_TOOL_COMPLETE is set, exit after handling the tool call
+        if (process.env.EXIT_ON_TOOL_COMPLETE === 'true') {
+          this.logInfo('Shutting down MCP server...');
+          // Give the launcher a moment to read the output before exiting
+          setTimeout(() => process.exit(0), 250);
+        }
+
+        return result;
       } catch (error) {
         this.logError(`Tool execution failed: ${request.params.name}`, error);
         return {
@@ -255,8 +307,234 @@ class JavaDocumentationMCPServer {
     };
   }
 
+  private async getCacheStatus(args: any): Promise<CallToolResult> {
+    const projectPath = args?.projectPath || this.config.microservicePath;
+    
+    if (!projectPath) {
+      throw new Error('projectPath is required (either as parameter or MICROSERVICE_PATH env var)');
+    }
+
+    const classesSummaryPath = path.join(this.config.outputPath, 'classes-summary.json');
+    const cacheMetadataPath = path.join(this.config.outputPath, '.cache-metadata.json');
+    
+    try {
+      const currentSourceHash = await this.calculateSourceHash(projectPath);
+      
+      let cacheStatus = {
+        classesSummaryExists: false,
+        cacheMetadataExists: false,
+        sourceFilesChanged: true,
+        lastUpdated: 'Never',
+        currentSourceHash,
+        cachedSourceHash: 'N/A',
+        sourceFileCount: 0,
+        classCount: 0,
+      };
+
+      // Check if classes-summary.json exists
+      try {
+        await fs.access(classesSummaryPath);
+        cacheStatus.classesSummaryExists = true;
+      } catch {}
+
+      // Check cache metadata
+      try {
+        const metadataContent = await fs.readFile(cacheMetadataPath, 'utf-8');
+        const metadata: CacheMetadata = JSON.parse(metadataContent);
+        cacheStatus.cacheMetadataExists = true;
+        cacheStatus.cachedSourceHash = metadata.sourceHash;
+        cacheStatus.lastUpdated = metadata.lastUpdated;
+        cacheStatus.sourceFilesChanged = metadata.sourceHash !== currentSourceHash;
+        cacheStatus.classCount = metadata.classCount;
+      } catch {}
+
+      // Count current source files
+      const javaFiles = await this.findJavaFiles(projectPath);
+      cacheStatus.sourceFileCount = javaFiles.length;
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `📊 Cache Status Report:\n\n` +
+                  `📁 Classes Summary Exists: ${cacheStatus.classesSummaryExists ? '✅' : '❌'}\n` +
+                  `🗂️  Cache Metadata Exists: ${cacheStatus.cacheMetadataExists ? '✅' : '❌'}\n` +
+                  `🔄 Source Files Changed: ${cacheStatus.sourceFilesChanged ? '🔄 YES (regeneration needed)' : '✅ NO (cache valid)'}\n` +
+                  `📅 Last Updated: ${cacheStatus.lastUpdated}\n` +
+                  `📝 Source Files Found: ${cacheStatus.sourceFileCount}\n` +
+                  `📋 Classes in Cache: ${cacheStatus.classCount}\n\n` +
+                  `🔍 Hash Comparison:\n` +
+                  `   Current:  ${cacheStatus.currentSourceHash}\n` +
+                  `   Cached:   ${cacheStatus.cachedSourceHash}\n\n` +
+                  `💡 Recommendation: ${cacheStatus.sourceFilesChanged ? 
+                    '🔄 Run analyze_java_project to update cache' : 
+                    '✅ Cache is up-to-date, no action needed'}`,
+          },
+        ],
+      };
+    } catch (error) {
+      throw new Error(`Failed to get cache status: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  private async calculateSourceHash(projectPath: string): Promise<string> {
+    const javaFiles = await this.findJavaFiles(projectPath);
+    
+    if (javaFiles.length === 0) {
+      return 'empty';
+    }
+
+    // Sort files for consistent hashing
+    javaFiles.sort();
+    
+    const hash = crypto.createHash('sha256');
+    
+    for (const filePath of javaFiles) {
+      try {
+        const content = await fs.readFile(filePath, 'utf-8');
+        const stats = await fs.stat(filePath);
+        
+        // Include file path, content, and modification time in hash
+        hash.update(`${filePath}:${stats.mtime.toISOString()}:${content}`);
+      } catch (error) {
+        this.logError(`Failed to read file for hashing: ${filePath}`, error);
+      }
+    }
+    
+    return hash.digest('hex');
+  }
+
+  private async shouldRegenerateClassesSummary(projectPath: string, forceRegenerate: boolean = false): Promise<boolean> {
+    if (forceRegenerate) {
+      this.logInfo('🔄 Force regeneration requested');
+      return true;
+    }
+
+    const classesSummaryPath = path.join(this.config.outputPath, 'classes-summary.json');
+    const cacheMetadataPath = path.join(this.config.outputPath, '.cache-metadata.json');
+
+    try {
+      // Check if classes summary exists
+      await fs.access(classesSummaryPath);
+      
+      // Check if cache metadata exists
+      await fs.access(cacheMetadataPath);
+      
+      // Read cache metadata
+      const metadataContent = await fs.readFile(cacheMetadataPath, 'utf-8');
+      const metadata: CacheMetadata = JSON.parse(metadataContent);
+      
+      // Calculate current source hash
+      const currentSourceHash = await this.calculateSourceHash(projectPath);
+      
+      if (metadata.sourceHash === currentSourceHash) {
+        this.logInfo('✅ Source files unchanged, using cached classes-summary.json');
+        return false;
+      } else {
+        this.logInfo('🔄 Source files changed, regeneration needed');
+        this.logDebug('Hash comparison:', {
+          cached: metadata.sourceHash,
+          current: currentSourceHash
+        });
+        return true;
+      }
+    } catch (error) {
+      this.logInfo('📄 No valid cache found, will generate classes-summary.json');
+      return true;
+    }
+  }
+
+  private async saveCacheMetadata(projectPath: string, classesSummary: ClassSummary[]): Promise<void> {
+    const sourceHash = await this.calculateSourceHash(projectPath);
+    const javaFiles = await this.findJavaFiles(projectPath);
+    
+    const metadata: CacheMetadata = {
+      sourceHash,
+      lastUpdated: new Date().toISOString(),
+      sourceFiles: javaFiles.sort(),
+      classCount: classesSummary.length,
+    };
+
+    const cacheMetadataPath = path.join(this.config.outputPath, '.cache-metadata.json');
+    await fs.writeFile(cacheMetadataPath, JSON.stringify(metadata, null, 2));
+    
+    this.logDebug('💾 Cache metadata saved:', metadata);
+  }
+
+  private async shouldRegenerateDocumentation(forceRegenerate: boolean = false, classesSummaryWasRegenerated: boolean = false): Promise<boolean> {
+    if (forceRegenerate) {
+      this.logInfo('🔄 Force documentation regeneration requested');
+      return true;
+    }
+
+    // If classes-summary.json was just regenerated, we definitely need to regenerate docs
+    if (classesSummaryWasRegenerated) {
+      this.logInfo('🔄 classes-summary.json was just regenerated, documentation needs update');
+      return true;
+    }
+
+    const classesSummaryPath = path.join(this.config.outputPath, 'classes-summary.json');
+    
+    // Check if documentation files exist
+    const docFiles = [
+      path.join(this.config.outputPath, `architecturedesign.${this.config.docFormat}`),
+      path.join(this.config.outputPath, `detaileddesign.${this.config.docFormat}`),
+      path.join(this.config.outputPath, `openApiSpecification.${this.config.docFormat}`),
+    ];
+
+    try {
+      // Check if all documentation files exist
+      const missingFiles: string[] = [];
+      for (const docFile of docFiles) {
+        try {
+          await fs.access(docFile);
+        } catch {
+          missingFiles.push(path.basename(docFile));
+        }
+      }
+
+      if (missingFiles.length > 0) {
+        this.logInfo(`📄 Missing documentation files: ${missingFiles.join(', ')}, will generate documentation`);
+        return true;
+      }
+
+      // Get classes-summary.json modification time
+      const summaryStats = await fs.stat(classesSummaryPath);
+      
+      // Get the oldest documentation file time
+      let oldestDocTime = new Date();
+      let oldestDocFile = '';
+      for (const docFile of docFiles) {
+        const docStats = await fs.stat(docFile);
+        if (docStats.mtime < oldestDocTime) {
+          oldestDocTime = docStats.mtime;
+          oldestDocFile = path.basename(docFile);
+        }
+      }
+
+      // Log detailed timestamp information
+      // this.logInfo('🕒 Timestamp comparison details:');
+      // this.logInfo(`   classes-summary.json: ${summaryStats.mtime.toISOString()}`);
+      // this.logInfo(`   Oldest doc file (${oldestDocFile}): ${oldestDocTime.toISOString()}`);
+      // this.logInfo(`   Time difference: ${summaryStats.mtime.getTime() - oldestDocTime.getTime()}ms`);
+
+      // If classes-summary.json is newer than documentation files, regenerate
+      if (summaryStats.mtime > oldestDocTime) {
+        this.logInfo('🔄 classes-summary.json is newer than documentation, regeneration needed');
+        return true;
+      } else {
+        this.logInfo('\n✅ Documentation is up-to-date (No code changes detected since last generation)');
+        return false;
+      }
+    } catch (error) {
+      this.logError('📄 Error checking documentation status, will generate documentation', error);
+      return true;
+    }
+  }
+
   private async analyzeJavaProject(args: any): Promise<CallToolResult> {
     const projectPath = args?.projectPath || this.config.microservicePath;
+    const forceRegenerate = args?.forceRegenerate || false;
     
     if (!projectPath) {
       throw new Error('projectPath is required (either as parameter or MICROSERVICE_PATH env var)');
@@ -270,6 +548,27 @@ class JavaDocumentationMCPServer {
     } catch (error) {
       throw new Error(`Project path does not exist or is not accessible: ${projectPath}`);
     }
+
+    // Ensure output directory exists
+    await fs.mkdir(this.config.outputPath, { recursive: true });
+
+    // Check if regeneration is needed
+    const shouldRegenerate = await this.shouldRegenerateClassesSummary(projectPath, forceRegenerate);
+    
+    if (!shouldRegenerate) {
+      const classesSummaryPath = path.join(this.config.outputPath, 'classes-summary.json');
+      const content = await fs.readFile(classesSummaryPath, 'utf-8');
+      const classesSummary = JSON.parse(content);
+      
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `✅ Using cached classes-summary.json (no source changes detected)\n\n📊 Cached analysis contains ${classesSummary.length} classes:\n${classesSummary.map((c: ClassSummary) => `- ${c.className}`).join('\n')}\n\n💡 Use forceRegenerate=true to regenerate anyway`,
+          },
+        ],
+      };
+    }
     
     const classesSummary = await this.parseJavaFiles(projectPath);
     
@@ -278,10 +577,10 @@ class JavaDocumentationMCPServer {
     }
     
     const outputPath = path.join(this.config.outputPath, 'classes-summary.json');
-    
-    // Ensure output directory exists
-    await fs.mkdir(this.config.outputPath, { recursive: true });
     await fs.writeFile(outputPath, JSON.stringify(classesSummary, null, 2));
+    
+    // Save cache metadata
+    await this.saveCacheMetadata(projectPath, classesSummary);
 
     this.logInfo(`📄 Classes summary generated: ${outputPath}`);
 
@@ -289,7 +588,7 @@ class JavaDocumentationMCPServer {
       content: [
         {
           type: 'text',
-          text: `✅ Successfully analyzed Java project and generated classes-summary.json at ${outputPath}\n\n📊 Found ${classesSummary.length} classes:\n${classesSummary.map(c => `- ${c.className}`).join('\n')}`,
+          text: `✅ Successfully analyzed Java project and generated classes-summary.json at ${outputPath}\n\n📊 Found ${classesSummary.length} classes:\n${classesSummary.map(c => `- ${c.className}`).join('\n')}\n\n💾 Cache metadata saved for future runs`,
         },
       ],
     };
@@ -299,6 +598,7 @@ class JavaDocumentationMCPServer {
     const classesSummaryPath = args?.classesSummaryPath || path.join(this.config.outputPath, 'classes-summary.json');
     const outputFormat = args?.outputFormat || this.config.docFormat;
     const outputDir = args?.outputDir || this.config.outputPath;
+    const forceRegenerate = args?.forceRegenerate || false;
     
     this.logInfo(`📝 Generating documentation from: ${classesSummaryPath}`);
     
@@ -307,6 +607,26 @@ class JavaDocumentationMCPServer {
       await fs.access(classesSummaryPath);
     } catch (error) {
       throw new Error(`Classes summary file not found: ${classesSummaryPath}. Run analyze_java_project first.`);
+    }
+
+    // Check if documentation regeneration is needed
+    const shouldRegenerate = await this.shouldRegenerateDocumentation(forceRegenerate, false);
+    
+    if (!shouldRegenerate) {
+      const docFiles = [
+        `architecturedesign.${outputFormat}`,
+        `detaileddesign.${outputFormat}`,
+        `openApiSpecification.${outputFormat}`,
+      ];
+      
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `✅ Documentation is up-to-date (classes-summary.json hasn't changed)\n\n📚 Existing documentation files:\n${docFiles.map(file => `- ${file}`).join('\n')}\n\n💡 Use forceRegenerate=true to regenerate anyway`,
+          },
+        ],
+      };
     }
     
     const classesSummaryContent = await fs.readFile(classesSummaryPath, 'utf-8');
@@ -348,7 +668,7 @@ class JavaDocumentationMCPServer {
       content: [
         {
           type: 'text',
-          text: `✅ Successfully generated ${outputFormat.toUpperCase()} documentation files:\n${generatedFiles.map(file => `- ${path.basename(file)}`).join('\n')}`,
+          text: `✅ Successfully generated ${outputFormat.toUpperCase()} documentation files:\n${generatedFiles.map(file => `- ${path.basename(file)}`).join('\n')}\n\n🔄 Documentation was regenerated because classes-summary.json was recently updated`,
         },
       ],
     };
@@ -358,6 +678,7 @@ class JavaDocumentationMCPServer {
     const projectPath = args?.projectPath || this.config.microservicePath;
     const outputDir = args?.outputDir || this.config.outputPath;
     const outputFormat = args?.outputFormat || this.config.docFormat;
+    const forceRegenerate = args?.forceRegenerate || false;
     
     if (!projectPath) {
       throw new Error('projectPath is required (either as parameter or MICROSERVICE_PATH env var)');
@@ -375,50 +696,77 @@ class JavaDocumentationMCPServer {
     // Ensure output directory exists
     await fs.mkdir(outputDir, { recursive: true });
 
-    // Step 1: Analyze Java project
-    this.logInfo('📋 Step 1: Analyzing Java project...');
-    const classesSummary = await this.parseJavaFiles(projectPath);
+    let pipelineResults: string[] = [];
+
+    // Step 1: Check if classes-summary.json needs regeneration
+    this.logInfo('📋 Step 1: Checking if classes analysis is needed...');
+    const shouldRegenerateClasses = await this.shouldRegenerateClassesSummary(projectPath, forceRegenerate);
     
-    if (classesSummary.length === 0) {
-      throw new Error(`No Java classes found in project path: ${projectPath}. Make sure the path contains .java files in src/ directories.`);
+    let classesSummary: ClassSummary[];
+    let classesSummaryPath = path.join(outputDir, 'classes-summary.json');
+    
+    if (shouldRegenerateClasses) {
+      this.logInfo('🔄 Analyzing Java project (source files changed)...');
+      classesSummary = await this.parseJavaFiles(projectPath);
+      
+      if (classesSummary.length === 0) {
+        throw new Error(`No Java classes found in project path: ${projectPath}. Make sure the path contains .java files in src/ directories.`);
+      }
+      
+      await fs.writeFile(classesSummaryPath, JSON.stringify(classesSummary, null, 2));
+      await this.saveCacheMetadata(projectPath, classesSummary);
+      pipelineResults.push('🔄 Regenerated classes-summary.json (source files changed)');
+    } else {
+      this.logInfo('✅ Using cached classes-summary.json (no source changes)');
+      const content = await fs.readFile(classesSummaryPath, 'utf-8');
+      classesSummary = JSON.parse(content);
+      pipelineResults.push('✅ Used cached classes-summary.json (no changes)');
     }
+
+    // Step 2: Check if documentation needs regeneration
+    this.logInfo('📝 Step 2: Checking if documentation regeneration is needed...');
+    const shouldRegenerateDoc = await this.shouldRegenerateDocumentation(forceRegenerate, shouldRegenerateClasses);
     
-    const classesSummaryPath = path.join(outputDir, 'classes-summary.json');
-    await fs.writeFile(classesSummaryPath, JSON.stringify(classesSummary, null, 2));
+    if (shouldRegenerateDoc) {
+      this.logInfo('🤖 Generating documentation with OpenAI...');
+      
+      const generatedFiles: string[] = [];
 
-    // Step 2: Generate documentation
-    this.logInfo('🤖 Step 2: Generating documentation with OpenAI...');
-    
-    const generatedFiles: string[] = [];
+      // Generate Architecture Design Document
+      this.logInfo('📐 Generating Architecture Design Document...');
+      const architectureDoc = await this.generateArchitectureDesign(classesSummary, outputFormat);
+      const architectureFile = path.join(outputDir, `architecturedesign.${outputFormat}`);
+      await fs.writeFile(architectureFile, architectureDoc);
+      generatedFiles.push(architectureFile);
 
-    // Generate Architecture Design Document
-    this.logInfo('📐 Generating Architecture Design Document...');
-    const architectureDoc = await this.generateArchitectureDesign(classesSummary, outputFormat);
-    const architectureFile = path.join(outputDir, `architecturedesign.${outputFormat}`);
-    await fs.writeFile(architectureFile, architectureDoc);
-    generatedFiles.push(architectureFile);
+      // Generate Detailed Design Document
+      this.logInfo('🔍 Generating Detailed Design Document...');
+      const detailedDoc = await this.generateDetailedDesign(classesSummary, outputFormat);
+      const detailedFile = path.join(outputDir, `detaileddesign.${outputFormat}`);
+      await fs.writeFile(detailedFile, detailedDoc);
+      generatedFiles.push(detailedFile);
 
-    // Generate Detailed Design Document
-    this.logInfo('🔍 Generating Detailed Design Document...');
-    const detailedDoc = await this.generateDetailedDesign(classesSummary, outputFormat);
-    const detailedFile = path.join(outputDir, `detaileddesign.${outputFormat}`);
-    await fs.writeFile(detailedFile, detailedDoc);
-    generatedFiles.push(detailedFile);
+      // Generate OpenAPI Specification Document
+      this.logInfo('📋 Generating OpenAPI Specification Document...');
+      const openApiDoc = await this.generateOpenApiSpecification(classesSummary, outputFormat);
+      const openApiFile = path.join(outputDir, `openApiSpecification.${outputFormat}`);
+      await fs.writeFile(openApiFile, openApiDoc);
+      generatedFiles.push(openApiFile);
 
-    // Generate OpenAPI Specification Document
-    this.logInfo('📋 Generating OpenAPI Specification Document...');
-    const openApiDoc = await this.generateOpenApiSpecification(classesSummary, outputFormat);
-    const openApiFile = path.join(outputDir, `openApiSpecification.${outputFormat}`);
-    await fs.writeFile(openApiFile, openApiDoc);
-    generatedFiles.push(openApiFile);
+      pipelineResults.push(`🔄 Generated ${generatedFiles.length} documentation files`);
+      pipelineResults.push(`📁 Files: ${generatedFiles.map(f => path.basename(f)).join(', ')}`);
+    } else {
+      this.logInfo('✅ Skipping document generation');
+      pipelineResults.push('✅ Documentation is up-to-date (skipped regeneration)');
+    }
 
-    this.logInfo('✅ Full pipeline completed successfully');
+    this.logInfo('\n✅ Full pipeline completed successfully, good to shutdown MCP server');
 
     return {
       content: [
         {
           type: 'text',
-          text: `🎉 Full pipeline completed successfully!\n\n📁 Generated files:\n- ${classesSummaryPath}\n${generatedFiles.map(file => `- ${file}`).join('\n')}\n\n📊 Analyzed ${classesSummary.length} classes from the project:\n${classesSummary.map(c => `- ${c.className}`).join('\n')}`,
+          text: `🎉 Full pipeline completed successfully!\n\n`,
         },
       ],
     };
@@ -535,7 +883,7 @@ class JavaDocumentationMCPServer {
     const mappingMatches = content.match(/@(GetMapping|PostMapping|PutMapping|DeleteMapping|RequestMapping)[^}]*/g);
     if (mappingMatches) {
       mappingMatches.forEach(mapping => {
-        const methodMatch = content.match(new RegExp(mapping.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '.*?public.*?(\\w+)\\s*\\('));
+        const methodMatch = content.match(new RegExp(mapping.replace(/[.*+?^${}()|[\]\\]/g, '\\  private async parseJavaFiles(projectPath: string): Promise<ClassSummary[]') + '.*?public.*?(\\w+)\\s*\\('));
         if (methodMatch) {
           const mappingType = mapping.match(/@(\w+)/)?.[1] || 'Mapping';
           const endpointEntry = `${mappingType} -> ${methodMatch[1]}`;
