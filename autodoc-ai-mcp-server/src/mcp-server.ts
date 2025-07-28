@@ -78,7 +78,7 @@ class JavaDocumentationMCPServer {
     }
 
     this.openai = new OpenAI({
-      baseURL: 'https://openrouter.ai/api/v1',
+      // baseURL: 'https://openrouter.ai/api/v1',
       apiKey: this.config.openaiApiKey,
     });
 
