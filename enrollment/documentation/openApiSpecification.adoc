@@ -1,5 +1,3 @@
-= API Documentation for Enrollment Service
-
 == Introduction
 
 This document provides the API specifications for the Enrollment Service, which is designed to manage user enrollments for a mobility service. The API allows for nominating a primary user for an account.
