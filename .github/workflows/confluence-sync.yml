@@ -72,6 +72,25 @@ jobs:
           echo "Merged at: $(date '+%B %d, %Y at %H:%M UTC')"
           echo ""
           
+          # Debug information
+          echo "=== Debug Information ==="
+          echo "Current directory: $(pwd)"
+          echo "Available files:"
+          ls -la
+          echo ""
+          echo "Looking for documentation folder: $DOCS_FOLDER"
+          if [ -d "$DOCS_FOLDER" ]; then
+            echo "Found documentation folder. Contents:"
+            ls -la "$DOCS_FOLDER"
+          else
+            echo "Documentation folder not found!"
+            echo "Available directories:"
+            find . -type d -name "*documentation*" || true
+            find . -type d -name "*identityprovider*" || true
+          fi
+          echo "========================"
+          echo ""
+          
           # Run the hierarchical uploader
           python confluence_uploader_hierarchical.py
       - name: Post success comment
