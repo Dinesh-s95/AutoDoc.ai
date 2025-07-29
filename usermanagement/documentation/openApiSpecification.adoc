@@ -1,72 +1,32 @@
-= User Management API Documentation
+= Introduction
 
-== Introduction
+This document provides the OpenAPI 3.0 Specification for the User Management API. The API allows users to manage their vehicles and onboard new users. 
 
-The User Management API provides services for managing users and their vehicle assignments within a mobility platform. This API allows operations such as onboarding new users and assigning vehicles to existing users.
+Authentication:
+- Authentication is required for all endpoints using JWT tokens.
+- Include the JWT token in the Authorization header as `Bearer <token>`.
 
-=== Authentication Requirements
+Base URL: `https://api.example.com/v1`
 
-The API requires API key authentication for all its endpoints. Each request must include an API key in the header.
+How to use this specification:
+- Import this specification into tools like Swagger UI, Postman, or Insomnia to interact with the API endpoints.
 
-=== Base URL and Versioning
+== OpenAPI 3.0 Specification
 
-The base URL for the API is `https://api.example.com/v1`. This documentation refers to version 1 of the API.
-
-=== How to Use This Specification
-
-This specification is written in OpenAPI 3.0 format and can be used with tools that support the OpenAPI Specification (OAS), such as Swagger UI, Postman, and Insomnia. You can import this YAML into any of these tools to interact with the API or generate client code.
-
-== OpenAPI 3.0 YAML Specification
-
-[source,yaml]
-----
+```yaml
 openapi: 3.0.0
 info:
   title: User Management API
+  description: API for managing users and vehicles
   version: 1.0.0
-  description: API for managing users and their vehicle assignments in a mobility platform.
 servers:
   - url: https://api.example.com/v1
-    description: Production server
-
 paths:
-  /users/onboard:
-    post:
-      summary: Onboard a new user
-      operationId: onboardUser
-      tags:
-        - Users
-      parameters:
-        - name: username
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: password
-          in: query
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          description: User successfully onboarded
-          content:
-            text/plain:
-              schema:
-                type: string
-                example: "User onboarded successfully"
-        '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-  /users/assign-vehicle:
+  /user/assignVehicle:
     post:
       summary: Assign a vehicle to a user
-      operationId: assignVehicle
       tags:
-        - Users
+        - User Management
       parameters:
         - name: username
           in: query
@@ -90,106 +50,131 @@ paths:
             type: string
       responses:
         '200':
-          description: Vehicle assigned successfully
-          content:
-            text/plain:
-              schema:
-                type: string
-                example: "Vehicle assigned successfully"
-        '400':
-          description: Bad request
+          description: Successful assignment
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Error'
-
+                type: object
+                properties:
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      username:
+                        type: string
+                      vin:
+                        type: string
+                      brand:
+                        type: string
+                      country:
+                        type: string
+  /user/onboard:
+    post:
+      summary: Onboard a new user
+      tags:
+        - User Management
+      parameters:
+        - name: username
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: password
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User onboarded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  data:
+                    type: object
+                    properties:
+                      username:
+                        type: string
+                      password:
+                        type: string
 components:
-  schemas:
-    Error:
-      type: object
-      properties:
-        message:
-          type: string
-          example: "Invalid parameters provided"
-      required:
-        - message
-
-security:
-  - ApiKeyAuth: []
-
-securitySchemes:
-  ApiKeyAuth:
-    type: apiKey
-    in: header
-    name: X-API-Key
-----
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+```
 
 == API Documentation
 
-=== Endpoint Descriptions and Usage Examples
+=== User Management
 
-==== Onboard User
+==== Assign a Vehicle to a User
 
-Endpoint to onboard a new user to the platform.
+Assign a vehicle to a user by providing the username, vehicle VIN, brand, and country.
 
-*URL*: `POST /users/onboard`
+Request:
+```
+POST /user/assignVehicle
+{
+  "username": "john_doe",
+  "vin": "ABC123",
+  "brand": "Toyota",
+  "country": "USA"
+}
+```
 
-*Query Parameters*:
-- `username`: The username of the new user.
-- `password`: The password for the new user.
+Response:
+```
+{
+  "message": "Vehicle assigned successfully",
+  "data": {
+    "username": "john_doe",
+    "vin": "ABC123",
+    "brand": "Toyota",
+    "country": "USA"
+  }
+}
+```
 
-*Example Request*:
+==== Onboard a New User
 
-....
-POST /users/onboard?username=johndoe&password=securepassword HTTP/1.1
-Host: api.example.com
-X-API-Key: yourapikey
-....
+Onboard a new user by providing the username and password.
 
-*Example Response*:
+Request:
+```
+POST /user/onboard
+{
+  "username": "jane_smith",
+  "password": "password123"
+}
+```
 
-....
-HTTP/1.1 200 OK
-User onboarded successfully
-....
+Response:
+```
+{
+  "message": "User onboarded successfully",
+  "data": {
+    "username": "jane_smith",
+    "password": "password123"
+  }
+}
+```
 
-==== Assign Vehicle
+=== Authentication
 
-Endpoint to assign a vehicle to an existing user.
+All endpoints require JWT token authentication. Include the JWT token in the Authorization header as `Bearer <token>`.
 
-*URL*: `POST /users/assign-vehicle`
+=== Error Codes
 
-*Query Parameters*:
-- `username`: The username of the user.
-- `vin`: Vehicle Identification Number of the vehicle.
-- `brand`: Brand of the vehicle.
-- `country`: Country of vehicle registration.
+- 401 Unauthorized: Invalid JWT token
+- 400 Bad Request: Invalid request parameters
 
-*Example Request*:
+=== Rate Limiting
 
-....
-POST /users/assign-vehicle?username=johndoe&vin=123456789&brand=Toyota&country=USA HTTP/1.1
-Host: api.example.com
-X-API-Key: yourapikey
-....
-
-*Example Response*:
-
-....
-HTTP/1.1 200 OK
-Vehicle assigned successfully
-....
-
-=== Authentication Flows
-
-API key authentication is used. Include the API key in the request header as `X-API-Key`.
-
-=== Common Error Codes and Their Meanings
-
-- `400 Bad Request`: The request was unacceptable, often due to missing a required parameter or providing an invalid parameter value.
-- `401 Unauthorized`: No valid API key provided.
-- `500 Internal Server Error`: Unexpected error in the server.
-
-=== Rate Limiting Information
-
-Rate limiting is applied to ensure fair usage of the API. Users are limited to 1000 API calls per day. Exceeding this limit will result in a `429 Too Many Requests` response.
+No rate limiting is applied to this API.

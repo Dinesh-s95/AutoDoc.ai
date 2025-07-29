@@ -1,162 +1,161 @@
-= Vehicle Management System Detailed Design Document
+= Detailed Design Documentation
 
-This document provides a comprehensive detailed design of the Vehicle Management System implemented using Java Spring Boot. It covers class-by-class analysis, runtime view diagrams, entity relationship diagrams, and detailed component interactions.
+== Class-by-Class Analysis
 
-== 1. Class-by-Class Analysis
+=== Vehicle
 
-=== 1.1 Vehicle
+Purpose:
+- The `Vehicle` class represents a vehicle entity in the system.
+- It contains attributes such as brand, country, device, model, SOP (Start of Production), and VIN (Vehicle Identification Number).
 
-The `Vehicle` class is an entity model representing a vehicle in the system. It is annotated with JPA annotations to map it to a database table.
+Methods:
+- `getSop()`: Returns the Start of Production date.
+- `getBrand()`: Returns the brand of the vehicle.
+- `getCountry()`: Returns the country of the vehicle.
+- `getDevice()`: Returns the device of the vehicle.
+- `getModel()`: Returns the model of the vehicle.
+- `getVin()`: Returns the Vehicle Identification Number.
+- `setBrand(String brand)`: Sets the brand of the vehicle.
+- `setCountry(String country)`: Sets the country of the vehicle.
+- `setDevice(String device)`: Sets the device of the vehicle.
+- `setModel(String model)`: Sets the model of the vehicle.
+- `setSop(LocalDate sop)`: Sets the Start of Production date.
+- `setVin(String vin)`: Sets the Vehicle Identification Number.
 
-*Annotations:*
-- `@Entity`: Specifies that the class is an entity and is mapped to a database table.
-- `@Id`: Marks the `vin` field as the primary key of the entity.
-- `@NotBlank`, `@NotNull`: Validation annotations to ensure fields are not null or blank.
-- `@Table`: Specifies the table name if different from the class name.
+Annotations:
+- `@Entity`: Indicates that this class is an entity and is mapped to a database table.
+- `@Id`: Specifies the primary key of the entity.
+- `@NotBlank`: Validates that the annotated field is not null or empty.
+- `@NotNull`: Validates that the annotated field is not null.
+- `@Table`: Specifies the table name for the entity in the database.
 
-*Methods:*
-- Getters and setters for each field (`getBrand()`, `setBrand(String brand)`, etc.).
+Design Patterns:
+- This class follows the Entity design pattern for representing database entities.
 
-*Fields:*
-- `brand: String`
-- `country: String`
-- `device: String`
-- `model: String`
-- `sop: LocalDate` (Start of Production)
-- `vin: String` (Vehicle Identification Number)
+=== VehiclemanagementApplication
 
-=== 1.2 VehiclemanagementApplication
+Purpose:
+- The `VehiclemanagementApplication` class serves as the entry point for the Spring Boot application.
 
-This is the main class that runs the Spring Boot application.
+Methods:
+- `main(String[] args)`: The main method that starts the Spring Boot application.
 
-*Annotations:*
-- `@SpringBootApplication`: Marks this application as a Spring Boot application.
+Annotations:
+- `@SpringBootApplication`: Indicates that this class is the main configuration class for the Spring Boot application.
 
-*Methods:*
-- `public static void main(String[] args)`: The entry point of the Spring Boot application.
+=== VehicleController
 
-=== 1.3 VehicleController
+Purpose:
+- The `VehicleController` class handles HTTP requests related to vehicles.
 
-This class handles all vehicle-related HTTP requests.
+Methods:
+- `registerVehicle(Vehicle vehicle)`: Registers a new vehicle in the system.
+- `verifyRegistration(String vin, String brand, String country)`: Verifies the registration details of a vehicle.
 
-*Annotations:*
-- `@RestController`: Marks the class as a controller where every method returns a domain object instead of a view.
-- `@RequestMapping`: Maps HTTP requests to handler methods of MVC and REST controllers.
-- `@Autowired`: Marks the automatic injection of the `vehicleRepository`.
-- `@GetMapping`, `@PostMapping`: Annotations for mapping HTTP GET and POST requests respectively.
-- `@RequestBody`, `@RequestParam`, `@Validated`: Annotations for request body, request parameters, and validation.
+Annotations:
+- `@Autowired`: Injects dependencies into the controller.
+- `@GetMapping`: Handles HTTP GET requests.
+- `@PostMapping`: Handles HTTP POST requests.
+- `@RequestBody`: Binds the HTTP request body to a method parameter.
+- `@RequestMapping`: Maps HTTP requests to handler methods.
+- `@RequestParam`: Binds a method parameter to a web request parameter.
+- `@RestController`: Indicates that this class is a REST controller.
+- `@Validated`: Validates method arguments.
 
-*Methods:*
-- `registerVehicle(Vehicle vehicle)`: Registers a new vehicle.
-- `verifyRegistration(String vin, String brand, String country)`: Verifies vehicle registration details.
+Fields:
+- `vehicleRepository`: Instance of `VehicleRepository` for interacting with vehicle data.
 
-*Fields:*
-- `vehicleRepository: VehicleRepository`
+Design Patterns:
+- This class follows the Controller design pattern for handling HTTP requests.
 
-=== 1.4 VehicleRepository
+=== VehicleRepository
 
-This interface extends `JpaRepository`, allowing CRUD operations on the `Vehicle` entity.
+Purpose:
+- The `VehicleRepository` class provides methods for interacting with the database to manage vehicle entities.
 
-*Annotations:*
-- `@Repository`: Indicates that the class provides the mechanism for storage, retrieval, search, update and delete operation on objects.
+Annotations:
+- `@Repository`: Indicates that this class is a repository component for database operations.
 
-=== 1.5 VehiclemanagementApplicationTests
+=== VehiclemanagementApplicationTests
 
-This class is used for integration testing of the application.
+Purpose:
+- The `VehiclemanagementApplicationTests` class contains test cases for the Spring Boot application.
 
-*Annotations:*
-- `@SpringBootTest`: Provides Spring Boot test features.
-- `@Test`: Denotes that a method is a test method.
+Annotations:
+- `@SpringBootTest`: Indicates that the tests should load the Spring application context.
+- `@Test`: Marks a method as a test method.
 
-== 2. Runtime View Diagrams
+== Runtime View Diagrams
 
-=== 2.1 Sequence Diagrams
+[plantuml, runtime-view]
+----
+title User Registration Flow
+VehicleController -> VehicleRepository: Save Vehicle
+VehicleRepository --> VehicleController: Vehicle Saved
+----
 
-Below are the sequence diagrams for key business flows using PlantUML.
+[plantuml, runtime-view]
+----
+title Authentication/Login Flow
+User -> VehicleController: Login Request
+VehicleController -> AuthenticationProvider: Authenticate User
+AuthenticationProvider --> VehicleController: Authentication Result
+----
 
-==== 2.1.1 User Registration Flow
+[plantuml, runtime-view]
+----
+title JWT Token Validation Flow
+User -> VehicleController: Request with JWT Token
+VehicleController -> JwtTokenValidator: Validate Token
+JwtTokenValidator --> VehicleController: Token Validation Result
+----
 
-[plantuml, user-registration-sequence, png]
-....
-@startuml
-actor User
-participant "VehicleController" as VC
-participant "VehicleRepository" as VR
+[plantuml, runtime-view]
+----
+title Key Business Process Flow
+User -> VehicleController: Request
+VehicleController -> Service: Process Request
+Service -> Repository: Retrieve Data
+Repository --> Service: Data Retrieved
+Service --> VehicleController: Response
+----
 
-User -> VC : registerVehicle(vehicle)
-VC -> VR : save(vehicle)
-VR -> VC : vehicle
-VC -> User : ResponseEntity<Object>
-@enduml
-....
+[plantuml, runtime-view]
+----
+title Exception Handling Flow
+User -> VehicleController: Request
+VehicleController -> Service: Process Request
+Service -> ExceptionHandler: Handle Exception
+ExceptionHandler --> VehicleController: Exception Response
+----
 
-==== 2.1.2 Authentication/Login Flow
+== Entity Relationship Diagram
 
-[plantuml, authentication-sequence, png]
-....
-@startuml
-actor User
-participant "AuthController" as AC
-participant "AuthService" as AS
-
-User -> AC : login(credentials)
-AC -> AS : authenticate(credentials)
-AS -> AC : AuthenticationResult
-AC -> User : ResponseEntity<Object>
-@enduml
-....
-
-==== 2.1.3 JWT Token Validation Flow
-
-[plantuml, jwt-validation-sequence, png]
-....
-@startuml
-actor User
-participant "AuthController" as AC
-participant "JWTService" as JS
-
-User -> AC : request(resource)
-AC -> JS : validateToken(token)
-JS -> AC : isValid
-AC -> User : ResponseEntity<Object>
-@enduml
-....
-
-== 3. Entity Relationship Diagram
-
-Below is the entity relationship diagram for the database schema.
-
-[plantuml, entity-relationship-diagram, png]
-....
-@startuml
-entity "Vehicle" {
-  * vin : varchar(17)
-  ---
-  brand : varchar(255)
-  country : varchar(255)
-  device : varchar(255)
-  model : varchar(255)
-  sop : date
+[plantuml, er-diagram]
+----
+entity Vehicle {
+  + Long id
+  --
+  + String brand
+  + String country
+  + String device
+  + String model
+  + LocalDate sop
+  + String vin
 }
-@enduml
-....
 
-== 4. Detailed Component Interactions
+Vehicle ||--o VehicleRepository : CRUD
+----
 
-=== 4.1 Controller-Service-Repository Interactions
+== Detailed Component Interactions
 
-The `VehicleController` interacts with `VehicleRepository` to perform CRUD operations. The controller handles HTTP requests, validates input, and calls the repository to interact with the database.
+- Controller-Service-Repository interactions:
+  - The `VehicleController` interacts with the `VehicleService`, which in turn interacts with the `VehicleRepository` for CRUD operations.
+- Data flow through layers:
+  - HTTP requests flow from the controller to the service layer for processing and then to the repository for data access.
+- Exception propagation:
+  - Exceptions thrown in the service layer are handled by the exception handler in the controller layer.
+- Transaction boundaries:
+  - Transactions are managed by Spring's declarative transaction management, ensuring atomicity and consistency.
 
-=== 4.2 Data Flow Through Layers
-
-Data flows from the controller to the repository and back. Input data is received as HTTP requests, processed by the controller, and persisted/retrieved by the repository.
-
-=== 4.3 Exception Propagation
-
-Exceptions are thrown by the repository or service layers and are caught and handled in the controller layer, where appropriate HTTP responses are generated.
-
-=== 4.4 Transaction Boundaries
-
-Transaction boundaries are typically managed at the service layer, ensuring that database operations are completed successfully before committing the transaction.
-
-This document provides a detailed design overview of the Vehicle Management System, suitable for developers involved in maintaining or enhancing the system.
+This document provides a detailed overview of the design and interactions within the Java Spring Boot application.

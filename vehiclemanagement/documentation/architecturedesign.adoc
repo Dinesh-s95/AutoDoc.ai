@@ -1,111 +1,93 @@
-= Vehicle Management System Architecture Design
+= Architecture Design Documentation
 
-This document provides a comprehensive architecture design for the Vehicle Management System, focusing on the service architecture, component descriptions, infrastructure architecture, and system context.
-
-== 1. Service Architecture Overview
+== Service Architecture Overview
 
 === High-level System Architecture Diagram
 
-[plantuml, diagram-architecture, png]
+[plantuml, system_architecture]
 ----
 @startuml
-
-package "Spring Boot Application" {
-  [VehiclemanagementApplication] as Application
-  [VehicleController] as Controller
-  [VehicleService] as Service
-  [VehicleRepository] as Repository
-
-  Application --> Controller
-  Controller --> Service
-  Service --> Repository
+package "Vehicle Management System" {
+  [VehicleController] --> [VehicleRepository]
+  [VehicleController] --> [Vehicle]
+  [VehicleRepository] --> Database
+  [VehicleController] --> External Systems
 }
-
-database "Vehicle Database" {
-  [DB_Vehicle]
-}
-
-Repository --> DB_Vehicle
-
-cloud "External Vehicle Information System" {
-  [ExternalSystem]
-}
-
-Service --> ExternalSystem
-
 @enduml
 ----
 
 === External System Connections and Integrations
 
-The Vehicle Management System integrates with an external vehicle information system for data verification and enrichment. This connection is managed through the `VehicleService` component, which communicates with external APIs.
+The Vehicle Management System interacts with external systems for data exchange and validation purposes.
 
 === Component Interaction Overview
 
-- **VehiclemanagementApplication**: Initializes the Spring Boot application.
-- **VehicleController**: Handles HTTP requests and communicates with `VehicleService` to process data.
-- **VehicleService**: Provides business logic and interacts with `VehicleRepository` and external systems.
-- **VehicleRepository**: Manages data persistence in the Vehicle Database.
+The Vehicle Management System consists of the following components:
+- VehicleController: Handles incoming HTTP requests related to vehicle management.
+- VehicleRepository: Manages the persistence of vehicle data.
+- Vehicle: Represents the entity for vehicle details.
 
 === Technology Stack and Frameworks Used
 
-- **Spring Boot**: Framework for creating stand-alone, production-grade Spring based applications.
-- **Spring Data JPA**: Provides repository support for JPA data access.
-- **H2 Database**: In-memory database for development and testing.
-- **Maven**: Dependency management and project lifecycle management.
+The Vehicle Management System is built using:
+- Java Spring Boot
+- Hibernate for ORM
+- Spring Data JPA for data access
+- Spring MVC for RESTful services
 
-== 2. Component Description
-
-=== VehiclemanagementApplication
-
-Responsible for bootstrapping the application using Spring Boot's auto-configuration.
+== Component Description
 
 === VehicleController
 
-Handles incoming HTTP requests and delegates operations to the `VehicleService`. It uses annotations like `@RestController` and `@RequestMapping` to map requests.
-
-=== VehicleService
-
-Contains business logic for registering and verifying vehicles. It communicates with `VehicleRepository` for data persistence and interacts with external systems for data verification.
+The VehicleController component is responsible for handling incoming HTTP requests related to vehicle management. It interacts with the VehicleRepository to perform CRUD operations on vehicle entities. The VehicleController exposes REST endpoints for registering and verifying vehicles.
 
 === VehicleRepository
 
-Interface for the data access layer, using Spring Data JPA to interact with the database.
+The VehicleRepository component is responsible for managing the persistence of vehicle data. It interacts with the database to store and retrieve vehicle information. The VehicleRepository uses Spring Data JPA for data access.
+
+=== Vehicle
+
+The Vehicle component represents the entity for vehicle details. It contains attributes such as brand, country, device, model, SOP, and VIN. The Vehicle entity is mapped to a database table for storage.
+
+=== How Components Interact with Each Other
+
+- VehicleController interacts with VehicleRepository to perform CRUD operations on vehicle entities.
+- VehicleRepository interacts with the database to store and retrieve vehicle data.
 
 === External Dependencies and Integrations
 
-- **External Vehicle Information System**: Used for validating and enriching vehicle data during registration.
+The Vehicle Management System may integrate with external systems for validation and data exchange purposes.
 
-== 3. Infrastructure Architecture
+== Infrastructure Architecture
 
 === Deployment Architecture
 
-The application is containerized using Docker, allowing it to be deployed on any Docker-compatible environment, including Kubernetes clusters for scaling purposes.
+The Vehicle Management System is deployed as a Java Spring Boot application on a cloud-based server.
 
 === Database Architecture
 
-The system uses an H2 in-memory database for development, with the option to switch to a more robust solution like PostgreSQL for production environments.
+The system uses a relational database to store vehicle data. The database schema is designed to accommodate the Vehicle entity attributes.
 
 === Security Architecture
 
-Implements basic authentication and authorization using Spring Security. Data is secured both in transit and at rest using SSL and database encryption.
+Security measures such as HTTPS, authentication, and authorization mechanisms are implemented to secure the system from unauthorized access.
 
 === Network Architecture
 
-The application is designed to be deployed within a private subnet with controlled access via load balancers.
+The system communicates over HTTP/HTTPS protocols for client-server interactions.
 
-== 4. System Context
+== System Context
 
 === External Systems and Their Interfaces
 
-- **External Vehicle Information System**: Provides RESTful APIs for vehicle data verification and enrichment.
+The Vehicle Management System interfaces with external systems for data validation and exchange. These external systems may include third-party APIs or services.
 
 === Data Flow Between Systems
 
-Data flows from the `VehicleController` to `VehicleService`, then either to `VehicleRepository` for persistence or to external systems for additional processing.
+Data flows between the Vehicle Management System and external systems for validation and integration purposes.
 
 === Authentication and Authorization Flows at System Level
 
-Authentication is managed by Spring Security, which integrates with the system's user database to provide user validation and token generation.
+The system implements authentication and authorization mechanisms to control access to resources and ensure data security.
 
-This architecture document outlines the structure and design of the Vehicle Management System, providing a clear overview for architects and senior developers involved in the project.
+This concludes the architecture design documentation for the Vehicle Management System.
