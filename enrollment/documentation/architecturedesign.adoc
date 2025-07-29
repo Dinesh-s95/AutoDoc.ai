@@ -1,122 +1,112 @@
+= Enrollment System Architecture Design
+
+This document provides a comprehensive architecture design for the Enrollment System, developed using Java Spring Boot. The system is designed to manage user enrollments with external user management services.
+
+== 1. Service Architecture Overview
+
+=== High-level System Architecture Diagram
+
 [plantuml, diagram-architecture, png]
 ----
 @startuml
-!define SPRING #SpringGreen
-!define ENTITY #MistyRose
-!define DATABASE #Violet
-!define EXTERNAL #DeepSkyBlue
+package "Enrollment System" {
+  node "EnrollmentApplication" {
+    [EnrollmentController] 
+    [EnrollmentService]
+    [EnrollmentRepository]
+    database "Enrollment Database" {
+      [Enrollment]
+    }
+  }
 
-package "Spring Boot Application" as SBAPP {
-  component [EnrollmentApplication] <<SPRING>>
-  component [EnrollmentController] <<SPRING>>
-  component [EnrollmentService] <<SPRING>>
-  component [EnrollmentRepository] <<SPRING>>
-  entity [Enrollment] <<ENTITY>>
-}
+  node "External Systems" {
+    [UserManagementClient] --> [User API]
+  }
 
-database "Enrollment Database" {
-  [Database] <<DATABASE>>
-}
-
-[EnrollmentRepository] --> [Database] : reads/writes
-[EnrollmentService] --> [EnrollmentRepository] : uses
-[EnrollmentController] --> [EnrollmentService] : calls
-[EnrollmentApplication] --> [EnrollmentController]
-
-node "External Systems" {
-  [User Management System] <<EXTERNAL>>
-}
-
-[EnrollmentService] --> [User Management System] : fetches user data
-
+  [EnrollmentController] --> [EnrollmentService]
+  [EnrollmentService] --> [EnrollmentRepository]
+  [EnrollmentService] --> [UserManagementClient]
+  [UserManagementClient] ..> [User API] : FeignClient
 @enduml
 ----
 
 === External System Connections and Integrations
 
-The Enrollment System integrates with the following external systems:
-
-- **User Management System**: Communicates via REST API to fetch user data. This integration is facilitated through the `UserManagementClient` which is a Feign client in the Spring Boot application.
+The Enrollment System integrates with an external User Management API using a Feign client (`UserManagementClient`). This client handles communication and data exchange between the Enrollment System and the User Management API, facilitating operations such as user data retrieval.
 
 === Component Interaction Overview
 
-Components interact primarily through Spring's dependency injection mechanism. The `EnrollmentController` receives HTTP requests and calls methods in `EnrollmentService`, which in turn interacts with `EnrollmentRepository` to perform database operations. `EnrollmentService` also communicates with external services using `UserManagementClient`.
+The `EnrollmentController` receives HTTP requests and interacts with the `EnrollmentService` to process business logic. The `EnrollmentService` uses `EnrollmentRepository` for data persistence and interacts with the `UserManagementClient` to fetch or verify user data from external systems.
 
 === Technology Stack and Frameworks Used
 
-- **Java**: Programming language
-- **Spring Boot**: Application framework
-- **Spring Data JPA**: Database integration
-- **Hibernate**: ORM framework
-- **Feign**: Declarative REST client
-- **H2 Database**: Development database
-- **MySQL**: Production database
-- **JUnit**: Testing framework
+- **Programming Language:** Java
+- **Framework:** Spring Boot
+- **Data Access:** Spring Data JPA
+- **Remote Service Communication:** Spring Cloud OpenFeign
+- **Database:** MySQL
+- **Testing:** Spring Boot Test
 
 == 2. Component Description
 
 === EnrollmentApplication
 
-The entry point of the Spring Boot application, responsible for bootstrapping and launching the application.
+The entry point of the application, annotated with `@SpringBootApplication` and `@EnableFeignClients`. It initializes the Spring Boot application and enables Feign clients for external API communication.
 
 === UserManagementClient
 
-A Feign client that defines the connection and communication details with the external User Management System. It is used by `EnrollmentService` to fetch user data.
+A Feign client that provides an abstraction over HTTP requests to the external User Management API. It is responsible for fetching user data required by the Enrollment System.
 
 === EnrollmentController
 
-A REST controller that handles HTTP requests related to enrollments. It uses `EnrollmentService` to process business logic.
+A REST controller (`@RestController`) that handles incoming HTTP requests. It uses `EnrollmentService` to perform business operations. It is responsible for managing HTTP endpoints related to user enrollments.
 
 === UserResponseDTO
 
-A Data Transfer Object (DTO) used to encapsulate user data as received from the external User Management System.
+A Data Transfer Object (DTO) used to encapsulate user data received from external systems or sent from the controllers.
 
 === Enrollment
 
-An entity representing the enrollment data in the system. It is managed by Hibernate and persisted in the database through `EnrollmentRepository`.
+An entity (`@Entity`) representing the enrollment data model. It includes fields such as `id`, `role`, `username`, and `vin`. It is managed by JPA for data persistence.
 
 === EnrollmentRepository
 
-A Spring Data repository interface that abstracts the data layer, providing CRUD operations on the `Enrollment` entity.
+A Spring Data repository that provides CRUD operations on the `Enrollment` entity. It abstracts the database access layer.
 
 === EnrollmentService
 
-A service component marked with `@Service` that contains business logic. It interacts with both `EnrollmentRepository` and `UserManagementClient`.
-
-=== EnrollmentApplicationTests
-
-Contains integration and unit tests for the application, ensuring that the system behaves as expected.
+A service (`@Service`) that contains business logic for nominating primary users. It interacts with both `EnrollmentRepository` and `UserManagementClient`.
 
 == 3. Infrastructure Architecture
 
 === Deployment Architecture
 
-The application is containerized using Docker, allowing it to be deployed on any Docker-compatible environment, including Kubernetes clusters for better scalability and management.
+The system is containerized using Docker, allowing it to be deployed on any platform supporting Docker. Kubernetes is used for orchestration, providing scalability and resilience.
 
 === Database Architecture
 
-The application uses MySQL in production with a fallback to H2 database for development. `EnrollmentRepository` interfaces with the database using Spring Data JPA.
+The system uses MySQL as the relational database. `Enrollment` data is stored in a structured format, with tables representing the entities.
 
 === Security Architecture
 
-The system uses Spring Security for authentication and authorization. HTTPS is enforced for all communications, and JWT tokens are used for securing REST API endpoints.
+Security is managed using Spring Security, which provides authentication and authorization. HTTPS is enforced for all communications.
 
 === Network Architecture
 
-The application is deployed within a VPC with controlled access to the internet and external systems. Security groups and network ACLs are used to fine-tune the traffic flow.
+The system is deployed within a VPC (Virtual Private Cloud), with controlled access to the internet and external systems. Internal communication happens within the private subnet.
 
 == 4. System Context
 
 === External Systems and Their Interfaces
 
-- **User Management System**: Accessed via REST APIs, secured by basic authentication. Provides user data necessary for enrollment processes.
+The system interacts with a User Management API, which provides user-related operations. The interface is accessed via HTTP/HTTPS using the Feign client.
 
 === Data Flow Between Systems
 
-Data flows from the User Management System to the `EnrollmentService` via `UserManagementClient`. The service layer processes this data and interacts with the database through `EnrollmentRepository`.
+Data flows from the `EnrollmentController` to `EnrollmentService`, then either to `EnrollmentRepository` for database operations or to `UserManagementClient` for external API interactions.
 
 === Authentication and Authorization Flows at System Level
 
-Authentication is managed by Spring Security, which integrates with an identity provider (IdP). Authorization is role-based, controlling access to different parts of the application based on user roles.
+Authentication is handled via OAuth2 tokens. The system validates these tokens for each request, ensuring that only authenticated users can access the API endpoints. Authorization is managed based on user roles defined within the system.
 
-This architecture document provides a detailed overview of the system, ensuring that architects and senior developers can understand and contribute effectively to the project.
+This architecture document provides a detailed overview of the Enrollment System, designed for scalability, security, and efficient data management, suitable for understanding by architects and senior developers.
