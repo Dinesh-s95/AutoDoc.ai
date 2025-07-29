@@ -1,0 +1,19 @@
+{
+  "sourceHash": "152861201bac6cbbb424cb8e947510ec2598a6f469c80370cde07c14c7f15e4d",
+  "lastUpdated": "2025-07-29T02:42:56.208Z",
+  "sourceFiles": [
+    "../identityprovider/src/main/java/com/vm/identityprovider/IdentityproviderApplication.java",
+    "../identityprovider/src/main/java/com/vm/identityprovider/config/JwtAuthFilter.java",
+    "../identityprovider/src/main/java/com/vm/identityprovider/config/SecurityConfig.java",
+    "../identityprovider/src/main/java/com/vm/identityprovider/controller/UserController.java",
+    "../identityprovider/src/main/java/com/vm/identityprovider/dto/AuthRequest.java",
+    "../identityprovider/src/main/java/com/vm/identityprovider/dto/AuthResponse.java",
+    "../identityprovider/src/main/java/com/vm/identityprovider/dto/UserPrincipal.java",
+    "../identityprovider/src/main/java/com/vm/identityprovider/entity/Users.java",
+    "../identityprovider/src/main/java/com/vm/identityprovider/repository/UserRepository.java",
+    "../identityprovider/src/main/java/com/vm/identityprovider/service/JWTService.java",
+    "../identityprovider/src/main/java/com/vm/identityprovider/service/UserService.java",
+    "../identityprovider/src/test/java/com/vm/identityprovider/IdentityproviderApplicationTests.java"
+  ],
+  "classCount": 12
+}

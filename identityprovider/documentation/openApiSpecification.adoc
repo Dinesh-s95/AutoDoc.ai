@@ -1,0 +1,175 @@
+Below is the comprehensive ADOC document containing the OpenAPI 3.0 specification for the provided Java REST controller classes, focusing on the `UserController` class. This document includes an introduction, a complete YAML specification, and detailed API documentation.
+
+== Introduction to the User API
+
+=== Overview
+The User API provides endpoints for managing user authentication and registration within our application. It allows clients to register new users, log in, and access user-specific greetings.
+
+=== Authentication Requirements
+All sensitive endpoints require a valid JSON Web Token (JWT) to ensure that requests are authenticated. The token must be included in the Authorization header of the request.
+
+=== Base URL and Versioning
+The base URL for all API endpoints is `https://api.example.com/v1`. This API is currently at version 1.
+
+=== How to Use This Specification
+This OpenAPI specification is designed to be used with tools that support the OpenAPI 3.0 format, such as Swagger UI, Postman, and Insomnia. You can import this specification into any of these tools to explore the API and test different endpoints.
+
+== OpenAPI 3.0 YAML Specification
+
+[source,yaml]
+----
+openapi: 3.0.0
+info:
+  title: User API
+  version: 1.0.0
+  description: API for user authentication and registration
+servers:
+  - url: https://api.example.com/v1
+paths:
+  /login:
+    post:
+      summary: Logs in a user
+      operationId: loginUser
+      tags:
+        - User
+      requestBody:
+        description: User login credentials
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthRequest'
+      responses:
+        '200':
+          description: Successful login
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /register:
+    post:
+      summary: Registers a new user
+      operationId: registerUser
+      tags:
+        - User
+      requestBody:
+        description: User registration data
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Users'
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Users'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  schemas:
+    AuthRequest:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+    Users:
+      type: object
+      properties:
+        userId:
+          type: integer
+          format: int64
+        username:
+          type: string
+        password:
+          type: string
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+security:
+  - bearerAuth: []
+securitySchemes:
+  bearerAuth:
+    type: http
+    scheme: bearer
+    bearerFormat: JWT
+----
+
+== API Documentation
+
+=== Endpoint Descriptions and Usage Examples
+
+==== Login
+Endpoint to authenticate a user and retrieve a token.
+
+Example Request:
+[source,json]
+----
+{
+  "username": "john_doe",
+  "password": "example"
+}
+----
+
+Example Response:
+[source,json]
+----
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+----
+
+==== Register
+Endpoint to register a new user in the system.
+
+Example Request:
+[source,json]
+----
+{
+  "username": "new_user",
+  "password": "new_password"
+}
+----
+
+Example Response:
+[source,json]
+----
+{
+  "userId": 1,
+  "username": "new_user",
+  "password": "new_password"
+}
+----
+
+=== Authentication Flows
+Users must authenticate via the `/login` endpoint to receive a JWT. This token must be included in the `Authorization` header as `Bearer <token>` for all secured endpoints.
+
+=== Common Error Codes
+- `401 Unauthorized`: Authentication is required and has failed or has not yet been provided.
+- `400 Bad Request`: The server cannot or will not process the request due to something that is perceived to be a client error (e.g., malformed request syntax).
+
+=== Rate Limiting
+Currently, there is no rate limiting enforced on the API. However, future versions may include this feature to prevent abuse.
+
+This document provides a detailed guide to using the User API, including request and response examples, schema definitions, and authentication requirements. It is designed to be fully compliant with OpenAPI 3.0 specifications and is ready for import into API management tools.

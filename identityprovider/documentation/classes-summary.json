@@ -1,0 +1,206 @@
+[
+  {
+    "className": "IdentityproviderApplication",
+    "annotations": [
+      "SpringBootApplication"
+    ],
+    "methods": [
+      "public static void main(String[] args)"
+    ],
+    "endpoints": [],
+    "fields": [],
+    "isEntity": false,
+    "isRestController": false
+  },
+  {
+    "className": "JwtAuthFilter",
+    "annotations": [
+      "Autowired",
+      "Component",
+      "Override",
+      "Slf4j"
+    ],
+    "methods": [
+      "protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException"
+    ],
+    "endpoints": [],
+    "fields": [
+      "userService : UserService"
+    ],
+    "isEntity": false,
+    "isRestController": false
+  },
+  {
+    "className": "SecurityConfig",
+    "annotations": [
+      "Autowired",
+      "Bean",
+      "Configuration",
+      "EnableWebSecurity"
+    ],
+    "methods": [
+      "public AuthenticationManager authenticationManager(final AuthenticationConfiguration authConfig) throws Exception",
+      "public AuthenticationProvider authenticationProvider()",
+      "public SecurityFilterChain securityFilterChain(final HttpSecurity http) throws Exception"
+    ],
+    "endpoints": [],
+    "fields": [
+      "jwtAuthFilter : JwtAuthFilter",
+      "userDetailsService : UserDetailsService"
+    ],
+    "isEntity": false,
+    "isRestController": false
+  },
+  {
+    "className": "UserController",
+    "annotations": [
+      "Autowired",
+      "GetMapping",
+      "PostMapping",
+      "RequestBody",
+      "RequestMapping",
+      "RestController"
+    ],
+    "methods": [
+      "public ResponseEntity<Object> login(@RequestBody final Users user)",
+      "public String greet()",
+      "public String greet2()",
+      "public Users registerUser(@RequestBody final Users user)"
+    ],
+    "endpoints": [],
+    "fields": [
+      "authManager : AuthenticationManager",
+      "jwtService : JWTService",
+      "userService : UserService"
+    ],
+    "isEntity": false,
+    "isRestController": true
+  },
+  {
+    "className": "AuthRequest",
+    "annotations": [
+      "Data"
+    ],
+    "methods": [],
+    "endpoints": [],
+    "fields": [
+      "password : String",
+      "username : String"
+    ],
+    "isEntity": false,
+    "isRestController": false
+  },
+  {
+    "className": "AuthResponse",
+    "annotations": [],
+    "methods": [],
+    "endpoints": [],
+    "fields": [],
+    "isEntity": false,
+    "isRestController": false
+  },
+  {
+    "className": "UserPrincipal",
+    "annotations": [
+      "Override"
+    ],
+    "methods": [
+      "public Collection<? extends GrantedAuthority> getAuthorities()",
+      "public String getPassword()",
+      "public String getUsername()",
+      "public boolean isAccountNonExpired()",
+      "public boolean isAccountNonLocked()",
+      "public boolean isCredentialsNonExpired()",
+      "public boolean isEnabled()"
+    ],
+    "endpoints": [],
+    "fields": [
+      "user : final Users"
+    ],
+    "isEntity": false,
+    "isRestController": false
+  },
+  {
+    "className": "Users",
+    "annotations": [
+      "Data",
+      "Entity",
+      "GeneratedValue",
+      "Getter",
+      "Id",
+      "Setter"
+    ],
+    "methods": [
+      "public String getPassword()",
+      "public String getUsername()"
+    ],
+    "endpoints": [],
+    "fields": [
+      "password : String",
+      "userId : Long",
+      "username : String"
+    ],
+    "isEntity": true,
+    "isRestController": false
+  },
+  {
+    "className": "UserRepository",
+    "annotations": [
+      "Repository"
+    ],
+    "methods": [],
+    "endpoints": [],
+    "fields": [],
+    "isEntity": false,
+    "isRestController": false
+  },
+  {
+    "className": "JWTService",
+    "annotations": [
+      "Service",
+      "Slf4j"
+    ],
+    "methods": [
+      "public String extractUsername(String token)",
+      "public String generateToken(final String username)",
+      "public boolean validateToken(String token)"
+    ],
+    "endpoints": [],
+    "fields": [
+      "secretKey : final Key"
+    ],
+    "isEntity": false,
+    "isRestController": false
+  },
+  {
+    "className": "UserService",
+    "annotations": [
+      "Autowired",
+      "Override",
+      "Service"
+    ],
+    "methods": [
+      "public UserDetails loadUserByUsername(final String username) throws UsernameNotFoundException",
+      "public Users register(final Users user)"
+    ],
+    "endpoints": [],
+    "fields": [
+      "encoder : BCryptPasswordEncoder",
+      "userRepository : UserRepository"
+    ],
+    "isEntity": false,
+    "isRestController": false
+  },
+  {
+    "className": "IdentityproviderApplicationTests",
+    "annotations": [
+      "SpringBootTest",
+      "Test"
+    ],
+    "methods": [],
+    "endpoints": [],
+    "fields": [],
+    "isEntity": false,
+    "isRestController": false
+  }
+]
