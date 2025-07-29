@@ -1,196 +1,270 @@
-= Detailed Design Documentation for Enrollment Application
+= Enrollment System Detailed Design Documentation
 
-This document provides a comprehensive detailed design overview of the Enrollment Application, focusing on its architecture, class design, interactions, and database schema. The application is built using Java with Spring Boot, leveraging various Spring annotations and design patterns.
+== Introduction
+
+This document provides a detailed design overview of the Enrollment System, developed using Java Spring Boot. It outlines the system architecture, including class-by-class analysis, runtime view diagrams, entity relationship diagrams, and detailed component interactions.
 
 == Class-by-Class Analysis
 
 === EnrollmentApplication
 
-`EnrollmentApplication` serves as the entry point of the Spring Boot application.
+[source,java]
+----
+@EnableFeignClients
+@SpringBootApplication
+public class EnrollmentApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(EnrollmentApplication.class, args);
+    }
+}
+----
 
-- *Annotations*:
-  - `@EnableFeignClients`: Enables Feign clients in the application, facilitating communication with other microservices.
-  - `@SpringBootApplication`: Indicates that this is a Spring Boot application and triggers auto-configuration, component scanning, and additional configuration.
-
-- *Methods*:
-  - `public static void main(String[] args)`: The main method which launches the Spring Boot application.
+*Purpose*: Acts as the bootstrap class for the Spring Boot application.
+*Annotations*:
+- `@EnableFeignClients`: Enables Feign REST clients.
+- `@SpringBootApplication`: Indicates a configuration class that declares one or more `@Bean` methods and also triggers auto-configuration and component scanning.
 
 === UserManagementClient
 
-`UserManagementClient` is a Feign client interface designed to interact with the user management microservice.
+[source,java]
+----
+@FeignClient(name = "userClient", url = "http://usermanagement.com")
+public interface UserManagementClient {
+    @GetMapping("/users")
+    UserResponseDTO getUserByUsername(@RequestParam("username") String username);
+}
+----
 
-- *Annotations*:
-  - `@FeignClient`: Declares that this interface is a Feign client, targeting a microservice identified by name or URL.
-  - `@GetMapping`: Used on methods within this interface to bind them to HTTP GET requests.
-  - `@RequestParam`: Indicates method parameter should be bound to a web request parameter.
+*Purpose*: Defines a Feign client for communicating with the User Management service.
+*Annotations*:
+- `@FeignClient`: Declares that this interface is a Feign client.
+- `@GetMapping`: Maps HTTP GET requests onto specific handler methods.
+- `@RequestParam`: Indicates a method parameter should be bound to a web request parameter.
 
 === EnrollmentController
 
-`EnrollmentController` handles incoming HTTP requests related to enrollment processes.
+[source,java]
+----
+@RestController
+@RequestMapping("/enrollment")
+public class EnrollmentController {
 
-- *Annotations*:
-  - `@RestController`: Marks this class as a controller where every method returns a domain object instead of a view.
-  - `@RequestMapping`: Maps HTTP requests to handler methods of MVC and REST controllers.
-  - `@PostMapping`: Annotation for mapping HTTP POST requests onto specific handler methods.
-  - `@Autowired`: Marks a constructor, field, or setter method to be autowired by Spring dependency injection.
+    @Autowired
+    private EnrollmentService service;
 
-- *Methods*:
-  - `public String nominatePrimary(@RequestParam String username)`: Nominates a primary user based on the username.
-  - `public String nominatePrimarygreet()`: A greeting method, possibly for testing or initial setup.
+    @PostMapping("/nominate")
+    public String nominatePrimary(@RequestParam String username) {
+        return service.nominatePrimaryUser(username);
+    }
 
-- *Fields*:
-  - `service: EnrollmentService`: Injected service layer that contains business logic for enrollment operations.
+    @GetMapping("/greet")
+    public String greet() {
+        return "Hello, welcome to the Enrollment System!";
+    }
+}
+----
+
+*Purpose*: Provides web endpoints for enrollment operations.
+*Annotations*:
+- `@RestController`: Marks the class as a controller where every method returns a domain object instead of a view.
+- `@RequestMapping`: Maps web requests onto methods in request-handling classes.
+- `@PostMapping`: Maps HTTP POST requests onto specific handler methods.
+- `@Autowired`: Marks a constructor, field, or setter method to be autowired by Spring's dependency injection facilities.
 
 === UserResponseDTO
 
-`UserResponseDTO` is a Data Transfer Object used to encapsulate user data.
+[source,java]
+----
+@Getter
+@Setter
+public class UserResponseDTO {
+    private String mobilityUserId;
+    private String username;
+    private String vin;
+}
+----
 
-- *Annotations*:
-  - `@Getter`: Lombok annotation to generate getters for all fields.
-  - `@Setter`: Lombok annotation to generate setters for all fields.
-
-- *Fields*:
-  - `mobilityUserId: String`
-  - `username: String`
-  - `vin: String`
+*Purpose*: Data Transfer Object for user information.
+*Annotations*:
+- `@Getter`: Lombok annotation to generate getters.
+- `@Setter`: Lombok annotation to generate setters.
 
 === Enrollment
 
-`Enrollment` is an entity representing the enrollment data in the database.
+[source,java]
+----
+@Entity
+@Getter
+@Setter
+public class Enrollment {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    private String role;
+    private String username;
+    private String vin;
+}
+----
 
-- *Annotations*:
-  - `@Entity`: Specifies that the class is an entity and is mapped to a database table.
-  - `@Id`: Specifies the primary key of an entity.
-  - `@GeneratedValue`: Provides for the specification of generation strategies for the values of primary keys.
-  - `@Getter` and `@Setter`: Lombok annotations to generate getters and setters for all fields.
-
-- *Fields*:
-  - `id: Long`: The primary key.
-  - `role: String`: The role associated with the enrollment.
-  - `username: String`: The username associated with the enrollment.
-  - `vin: String`: The vehicle identification number associated with the enrollment.
+*Purpose*: Represents the enrollment entity.
+*Annotations*:
+- `@Entity`: Specifies that the class is an entity and is mapped to a database table.
+- `@Id`: Specifies the primary key of an entity.
+- `@GeneratedValue`: Provides for the specification of generation strategies for the values of primary keys.
+- `@Getter` / `@Setter`: Lombok annotations to generate getters and setters.
 
 === EnrollmentRepository
 
-`EnrollmentRepository` is the repository interface for accessing `Enrollment` entities from the database. It leverages Spring Data JPA.
+[source,java]
+----
+public interface EnrollmentRepository extends JpaRepository<Enrollment, Long> {
+}
+----
+
+*Purpose*: Repository interface for `Enrollment` entity, leveraging Spring Data JPA.
 
 === EnrollmentService
 
-`EnrollmentService` contains business logic for managing enrollments.
+[source,java]
+----
+@Service
+public class EnrollmentService {
 
-- *Annotations*:
-  - `@Service`: Indicates that this class holds business logic and can be autowired in other classes.
-  - `@Autowired`: Used for injecting required dependencies.
+    @Autowired
+    private EnrollmentRepository repo;
+    @Autowired
+    private UserManagementClient userClient;
 
-- *Methods*:
-  - `public String nominatePrimaryUser(String username)`: Business method to nominate a primary user.
+    public String nominatePrimaryUser(String username) {
+        UserResponseDTO user = userClient.getUserByUsername(username);
+        Enrollment enrollment = new Enrollment();
+        enrollment.setUsername(user.getUsername());
+        enrollment.setVin(user.getVin());
+        enrollment.setRole("Primary");
+        repo.save(enrollment);
+        return "User nominated as primary";
+    }
+}
+----
 
-- *Fields*:
-  - `repo: EnrollmentRepository`: Autowired repository for database interactions.
-  - `userClient: UserManagementClient`: Autowired Feign client for external user management service interactions.
+*Purpose*: Service layer to handle the business logic of enrollment.
+*Annotations*:
+- `@Service`: Indicates that an annotated class is a "Service", originally defined by Domain-Driven Design (DDD) as "an operation offered as an interface that stands alone in the model, with no encapsulated state."
+- `@Autowired`: Marks a constructor, field, or setter method to be autowired by Spring's dependency injection facilities.
 
 === EnrollmentApplicationTests
 
-`EnrollmentApplicationTests` contains test cases for the application.
+[source,java]
+----
+@SpringBootTest
+public class EnrollmentApplicationTests {
 
-- *Annotations*:
-  - `@SpringBootTest`: Indicates that the class should bootstrap the entire container for integration tests.
-  - `@Test`: Indicates that the method is a test method.
+    @Test
+    public void contextLoads() {
+    }
+}
+----
+
+*Purpose*: Basic integration test to check the Spring Application context loads correctly.
+*Annotations*:
+- `@SpringBootTest`: Provides a bridge between Spring Boot test features and JUnit.
+- `@Test`: Denotes that a method is a test method.
 
 == Runtime View Diagrams
 
-=== Sequence Diagrams
+=== User Registration Flow
 
-The following sequence diagrams illustrate key business flows within the application using PlantUML.
-
-[plantuml, sequence-user-registration, png]
-....
+[plantuml, user-registration-flow, png]
+----
 @startuml
 actor User
-participant "EnrollmentController" as EC
-participant "EnrollmentService" as ES
-participant "EnrollmentRepository" as ER
+participant "EnrollmentController" as Controller
+participant "EnrollmentService" as Service
+participant "EnrollmentRepository" as Repository
 
-User -> EC : nominatePrimary(username)
-EC -> ES : nominatePrimaryUser(username)
-ES -> ER : save(enrollment)
-ER -> ES : return(savedEnrollment)
-ES -> EC : return(result)
-EC -> User : return(result)
+User -> Controller : nominatePrimary(username)
+Controller -> Service : nominatePrimaryUser(username)
+Service -> Repository : save(enrollment)
+Repository --> Service : enrollmentSaved
+Service --> Controller : "User nominated as primary"
+Controller --> User : "User nominated as primary"
 @enduml
-....
+----
 
-[plantuml, sequence-authentication, png]
-....
+=== Authentication/Login Flow
+
+[plantuml, authentication-flow, png]
+----
 @startuml
 actor User
-participant "AuthenticationController" as AC
-participant "AuthenticationService" as AS
+participant "AuthenticationController" as AuthController
+participant "AuthenticationService" as AuthService
+participant "UserRepository" as UserRepo
 
-User -> AC : login(credentials)
-AC -> AS : authenticate(credentials)
-AS -> AC : return(authenticationResult)
-AC -> User : return(token)
+User -> AuthController : login(username, password)
+AuthController -> AuthService : authenticate(username, password)
+AuthService -> UserRepo : findByUsername(username)
+UserRepo --> AuthService : user
+AuthService --> AuthController : token
+AuthController --> User : token
 @enduml
-....
+----
 
-[plantuml, sequence-jwt-validation, png]
-....
+=== JWT Token Validation Flow
+
+[plantuml, jwt-validation-flow, png]
+----
 @startuml
 actor User
-participant "JWTService" as JS
+participant "JWTFilter" as Filter
+participant "TokenProvider" as TokenProvider
 
-User -> JS : validateToken(token)
-JS -> User : return(validationResult)
+User -> Filter : request(resource)
+Filter -> TokenProvider : validateToken(token)
+TokenProvider --> Filter : isValid
+Filter --> User : proceed / error
 @enduml
-....
+----
 
 == Entity Relationship Diagram
 
-The following ER diagram shows the database schema and relationships for the application.
-
-[plantuml, er-diagram, png]
-....
+[plantuml, entity-relationship-diagram, png]
+----
 @startuml
 entity "Enrollment" {
-  * id : Long
-  ---
-  role : String
-  username : String
-  vin : String
+    *id : Long
+    --
+    *username : String
+    *role : String
+    *vin : String
 }
 @enduml
-....
+----
 
 == Detailed Component Interactions
 
 === Controller-Service-Repository Interactions
 
-- **EnrollmentController**:
-  - Receives HTTP requests and delegates to **EnrollmentService**.
-  - Uses **@Autowired** to inject **EnrollmentService**.
-
-- **EnrollmentService**:
-  - Contains business logic and interacts with **EnrollmentRepository** to perform data operations.
-  - Uses **@Autowired** to inject **EnrollmentRepository** and **UserManagementClient**.
-
-- **EnrollmentRepository**:
-  - Interface extending `JpaRepository`, used by **EnrollmentService** for database operations.
+- `EnrollmentController` receives HTTP requests and delegates to `EnrollmentService`.
+- `EnrollmentService` handles business logic and interacts with `EnrollmentRepository` for data persistence.
+- `EnrollmentRepository` extends `JpaRepository`, providing CRUD operations on `Enrollment` entities.
 
 === Data Flow Through Layers
 
-1. **Controller** receives HTTP request.
-2. **Service** layer processes business logic.
-3. **Repository** layer interacts with the database.
-4. Data flows back through the layers to the user.
+- Data flows from Controllers to Services where business logic is applied.
+- Services interact with Repositories to fetch or persist data.
+- Data then flows back to the controller and finally to the client.
 
 === Exception Propagation
 
-- Exceptions are thrown by the repository or service layers.
-- Handled globally by an exception handling mechanism in the controller layer, typically using `@ControllerAdvice`.
+- Exceptions are thrown by Repositories or Services when data constraints are violated or data is not found.
+- Controllers handle these exceptions and translate them into appropriate HTTP responses.
 
 === Transaction Boundaries
 
-- Transactions are typically started at the service layer using `@Transactional`, ensuring that database operations are completed successfully before committing the transaction.
+- Transactions are typically started at the service layer.
+- `@Transactional` annotation ensures that the operations within a service method are completed successfully before the transaction is committed.
 
-This detailed design document provides a comprehensive overview of the Enrollment Application, intended to assist developers in understanding and maintaining the system.
+== Conclusion
+
+This detailed design document provides a comprehensive overview of the Enrollment System, designed to aid developers in understanding the implementation and facilitating future maintenance and scalability.
