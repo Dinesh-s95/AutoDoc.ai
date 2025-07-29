@@ -1,111 +1,108 @@
-= User Management System Detailed Design Document
+= User Management System Detailed Design Documentation
 
-This document provides a comprehensive detailed design of the User Management System implemented using Java Spring Boot. The system is designed to handle user registration, authentication, and vehicle assignment processes.
+This document provides a detailed design analysis of the User Management System, which is implemented using Java Spring Boot. The system is designed to handle user registration, authentication, and vehicle assignment processes.
 
-== Class-by-Class Analysis
+== 1. Class-by-Class Analysis
 
-=== UsermanagementApplication
+=== 1.1 UsermanagementApplication
 
-This is the main class of the application, responsible for bootstrapping the Spring Boot application.
+*Purpose:* This is the main class that bootstraps the Spring Boot application.
 
-- *Annotations:*
-  - `@EnableFeignClients`: Enables Feign support in Spring Boot application.
-  - `@SpringBootApplication`: Indicates a configuration class that declares one or more `@Bean` methods and also triggers auto-configuration and component scanning.
+*Annotations:*
+- `@EnableFeignClients`: Enables the discovery of interfaces that declare they are Feign clients.
+- `@SpringBootApplication`: Indicates a configuration class that declares one or more `@Bean` methods and also triggers auto-configuration and component scanning.
 
-- *Methods:*
-  - `public static void main(String[] args)`: The entry point of the Spring Boot application.
+*Methods:*
+- `public static void main(String[] args)`: The entry point of the Spring Boot application.
 
-=== IdentityProviderClient
+=== 1.2 IdentityProviderClient
 
-A Feign client for interacting with an external identity provider service.
+*Purpose:* Feign client for interacting with an external identity provider service.
 
-- *Annotations:*
-  - `@FeignClient`: Declares that this interface is a Feign client.
-  - `@PostMapping`: Maps HTTP POST requests onto specific handler methods.
-  - `@RequestBody`: Indicates a method parameter should be bound to the body of the web request.
+*Annotations:*
+- `@FeignClient`: Declares that this interface is a Feign client.
+- `@PostMapping`: Used to map HTTP POST requests onto specific handler methods.
+- `@RequestBody`: Indicates a method parameter should be bound to the body of the HTTP request.
 
-=== VehicleManagementClient
+=== 1.3 VehicleManagementClient
 
-A Feign client for interacting with an external vehicle management service.
+*Purpose:* Feign client for interacting with an external vehicle management service.
 
-- *Annotations:*
-  - `@FeignClient`: Marks this interface as a Feign client.
-  - `@GetMapping`: Maps HTTP GET requests onto specific handler methods.
-  - `@RequestParam`: Indicates a method parameter should be bound to a web request parameter.
+*Annotations:*
+- `@FeignClient`: Declares that this interface is a Feign client.
+- `@GetMapping`: Used to map HTTP GET requests onto specific handler methods.
+- `@RequestParam`: Indicates a method parameter should be bound to a web request parameter.
 
-=== UserManagementController
+=== 1.4 UserManagementController
 
-Controller that handles web requests related to user management.
+*Purpose:* Acts as the REST controller to handle HTTP requests related to user and vehicle management.
 
-- *Annotations:*
-  - `@RestController`: Marks the class as a controller where every method returns a domain object instead of a view.
-  - `@RequestMapping`: Maps web requests onto methods in request-handling classes.
-  - `@Autowired`: Marks a constructor, field, setter method, or config method to be autowired by Spring's dependency injection facilities.
+*Annotations:*
+- `@RestController`: Indicates that the data returned by each method will be written straight into the response body instead of rendering a template.
+- `@RequestMapping`: Provides routing information. It tells Spring that any HTTP request with the specified path should be mapped to the corresponding method.
+- `@PostMapping`: Indicates that the following methods handle HTTP POST requests.
+- `@RequestParam`: Binds the value of a query string parameter to a method parameter.
 
-- *Methods:*
-  - `public String assignVehicle(@RequestParam String username, @RequestParam String vin, @RequestParam String brand, @RequestParam String country)`: Assigns a vehicle to a user.
-  - `public String onboardUser(@RequestParam String username, @RequestParam String password)`: Handles the onboarding of a new user.
+*Methods:*
+- `public String assignVehicle(@RequestParam String username, @RequestParam String vin, @RequestParam String brand, @RequestParam String country)`: Assigns a vehicle to a user.
+- `public String onboardUser(@RequestParam String username, @RequestParam String password)`: Handles the user registration process.
 
-- *Fields:*
-  - `service : UserManagementService`: Injected service that handles the business logic.
+*Fields:*
+- `service : UserManagementService`: Autowired service that contains business logic for user and vehicle management.
 
-=== MobilityUser
+=== 1.5 MobilityUser
 
-Entity representing a user in the mobility context.
+*Purpose:* Entity class representing a user in the mobility system.
 
-- *Annotations:*
-  - `@Entity`: Specifies that the class is an entity.
-  - `@Table`: Specifies the primary table for the annotated entity.
-  - `@Id`: Specifies the primary key of an entity.
-  - `@GeneratedValue`: Provides for the specification of generation strategies for the values of primary keys.
-  - `@Getter/@Setter`: Lombok annotations to generate getters and setters automatically.
+*Annotations:*
+- `@Entity`: Specifies that the class is an entity and is mapped to a database table.
+- `@Table`: Specifies the table in the database with which this entity is mapped.
+- `@Id`: Specifies the primary key of an entity.
+- `@GeneratedValue`: Provides for the specification of generation strategies for the values of primary keys.
+- `@Getter`: Lombok annotation to create getters.
+- `@Setter`: Lombok annotation to create setters.
 
-- *Fields:*
-  - `id : Long`: The primary key.
-  - `mobilityUserId : String`: A unique user identifier.
-  - `role : String`: The user's role.
-  - `username : String`: The username.
-  - `vin : String`: Vehicle Identification Number associated with the user.
+*Fields:*
+- `id : Long`: The primary key.
+- `mobilityUserId : String`: A unique identifier for the user.
+- `role : String`: The role of the user within the system.
+- `username : String`: The username of the user.
+- `vin : String`: The vehicle identification number assigned to the user.
 
-=== UserManagementRepository
+=== 1.6 UserManagementRepository
 
-Repository for accessing user data.
+*Purpose:* Repository interface for CRUD operations on the `MobilityUser` entity.
 
-=== UserManagementService
+=== 1.7 UserManagementService
 
-Service layer that handles business logic related to user management.
+*Purpose:* Service layer that contains business logic for managing users and vehicles.
 
-- *Annotations:*
-  - `@Service`: Indicates that an annotated class is a "Service".
-  - `@Autowired`: Marks a constructor, field, setter method, or config method to be autowired by Spring's dependency injection facilities.
+*Annotations:*
+- `@Service`: Indicates that the class provides some business functionalities.
 
-- *Methods:*
-  - `public Optional<MobilityUser> getUserByUsername(String username)`: Retrieves a user by username.
-  - `public String onboardUser(String username, String password)`: Onboards a new user.
-  - `public void assignVehicleToUser(String username, String vin, String brand, String country)`: Assigns a vehicle to a user.
+*Methods:*
+- `public Optional<MobilityUser> getUserByUsername(String username)`: Retrieves a user by username.
+- `public String onboardUser(String username, String password)`: Registers a new user.
+- `public void assignVehicleToUser(String username, String vin, String brand, String country)`: Assigns a vehicle to a user.
 
-- *Fields:*
-  - `identityProvider : IdentityProviderClient`: Feign client for interacting with the identity provider.
-  - `repo : UserManagementRepository`: Repository for user data access.
-  - `vehicleClient : VehicleManagementClient`: Feign client for vehicle management.
+*Fields:*
+- `identityProvider : IdentityProviderClient`: Autowired Feign client for identity management.
+- `repo : UserManagementRepository`: Autowired repository for database interactions.
+- `vehicleClient : VehicleManagementClient`: Autowired Feign client for vehicle management.
 
-=== UsermanagementApplicationTests
+=== 1.8 UsermanagementApplicationTests
 
-Class dedicated to testing the UsermanagementApplication.
+*Purpose:* Contains integration tests for the application.
 
-- *Annotations:*
-  - `@SpringBootTest`: Provides a bridge between Spring Boot test features and JUnit.
-  - `@Test`: Denotes that a method is a test method.
+*Annotations:*
+- `@SpringBootTest`: Indicates that the class should bootstrap the entire container for integration testing.
+- `@Test`: Indicates that the method is a test method.
 
-== Runtime View Diagrams
+== 2. Runtime View Diagrams
 
-=== Sequence Diagrams
+=== 2.1 User Registration Flow
 
-The following sequence diagrams illustrate key business flows in the system.
-
-==== User Registration Flow
-
-[plantuml, user-registration-flow, png]
+[plantuml, user-registration-sequence, png]
 ----
 @startuml
 actor User
@@ -117,17 +114,17 @@ participant "UserManagementRepository" as Repository
 User -> Controller : onboardUser(username, password)
 Controller -> Service : onboardUser(username, password)
 Service -> IdentityProvider : createIdentity(username, password)
-IdentityProvider -> Service : identityCreated
-Service -> Repository : saveUser(userDetails)
+IdentityProvider -> Service : identityResponse
+Service -> Repository : save(newUser)
 Repository -> Service : userSaved
-Service -> Controller : userOnboarded
-Controller -> User : userOnboarded
+Service -> Controller : userResponse
+Controller -> User : userResponse
 @enduml
 ----
 
-==== Authentication/Login Flow
+=== 2.2 Authentication/Login Flow
 
-[plantuml, authentication-flow, png]
+[plantuml, authentication-sequence, png]
 ----
 @startuml
 actor User
@@ -138,70 +135,68 @@ participant "IdentityProviderClient" as IdentityProvider
 User -> Controller : authenticateUser(username, password)
 Controller -> Service : authenticateUser(username, password)
 Service -> IdentityProvider : validateCredentials(username, password)
-IdentityProvider -> Service : credentialsValid
-Service -> Controller : authenticationSuccess
-Controller -> User : authenticationSuccess
+IdentityProvider -> Service : validationResponse
+Service -> Controller : token
+Controller -> User : token
 @enduml
 ----
 
-==== JWT Token Validation Flow
+=== 2.3 JWT Token Validation Flow
 
-[plantuml, jwt-validation-flow, png]
+[plantuml, jwt-validation-sequence, png]
 ----
 @startuml
 actor User
-participant "SecurityFilter" as Filter
+participant "UserManagementController" as Controller
 participant "UserManagementService" as Service
 
-User -> Filter : accessResource(token)
-Filter -> Service : validateToken(token)
-Service -> Filter : tokenValid
-Filter -> User : accessGranted
+User -> Controller : request(resource)
+Controller -> Service : validateToken(token)
+Service -> Service : decodeToken(token)
+Service -> Controller : isValid
+Controller -> User : resource
 @enduml
 ----
 
-== Entity Relationship Diagram
+== 3. Entity Relationship Diagram
 
 [plantuml, entity-relationship-diagram, png]
 ----
 @startuml
 entity "MobilityUser" {
-  * id : Long
+  *id : Long
   --
-  * mobilityUserId : String
-  * role : String
-  * username : String
-  * vin : String
+  *mobilityUserId : String
+  *role : String
+  *username : String
+  *vin : String
 }
-
 @enduml
 ----
 
-== Detailed Component Interactions
+== 4. Detailed Component Interactions
 
-=== Controller-Service-Repository Interactions
+=== 4.1 Controller-Service-Repository Interactions
 
-- **UserManagementController**:
-  - Receives HTTP requests and delegates to **UserManagementService** for processing.
-  - Uses **@Autowired** to inject **UserManagementService**.
+*Controller -> Service:*
+- The controller layer handles incoming HTTP requests, validates input, and passes the request to the service layer.
 
-- **UserManagementService**:
-  - Handles business logic and interacts with **UserManagementRepository** and external services through **IdentityProviderClient** and **VehicleManagementClient**.
-  - Uses **@Autowired** to inject **UserManagementRepository**, **IdentityProviderClient**, and **VehicleManagementClient**.
+*Service -> Repository:*
+- The service layer contains business logic and calls on the repository layer to access the database.
 
-- **UserManagementRepository**:
-  - Interacts with the database to perform CRUD operations on **MobilityUser** entities.
+*Repository -> Database:*
+- The repository layer interacts directly with the database through JPA to perform CRUD operations.
 
-=== Data Flow Through Layers
+=== 4.2 Data Flow Through Layers
 
-- Data flows from the controller to the service where business logic is applied. Then, depending on the operation, it might interact with external services or the database through the repository.
+*Data flows from the controller to the service, then to the repository, and back to the user.*
 
-=== Exception Propagation
+=== 4.3 Exception Propagation
 
-- Exceptions are thrown at the service or repository layers and are propagated up to the controller where they are handled and appropriate HTTP responses are generated.
+*Exceptions are thrown from the repository or service layers and are handled in the controller layer, where appropriate HTTP responses are generated.*
 
-=== Transaction Boundaries
+=== 4.4 Transaction Boundaries
 
-- Transactions are managed at the service layer, ensuring that database operations are completed successfully before committing the transaction.
+*Transactions are typically started at the service layer to ensure data integrity and are committed or rolled back depending on the operation outcome.*
 
-This detailed design document provides a clear and comprehensive understanding of the User Management System, facilitating further development, maintenance, and scaling of the application.
+This detailed design document aims to provide developers with a clear understanding of the system's architecture and operations, facilitating easier maintenance and scalability.

@@ -2,19 +2,19 @@
 
 == Introduction
 
-Welcome to the Vehicle Management API. This API allows users to register vehicles and verify vehicle registration details. The API is designed to be simple and efficient, providing direct access to vehicle data management.
+This document provides a comprehensive overview of the Vehicle Management API, designed to facilitate vehicle registration and verification processes. The API allows clients to register new vehicles and verify existing registrations based on vehicle identification numbers (VINs), brands, and countries.
 
 === Authentication Requirements
 
-Currently, this API does not require authentication. This may change in future versions as features expand.
+Currently, this API does not require authentication. Future versions might include API key or OAuth2 based authentication mechanisms.
 
 === Base URL and Versioning
 
-The base URL for all API endpoints is `https://api.example.com/v1`. All requests should be made to this base URL. This documentation refers to version 1 of the API.
+The base URL for all API endpoints is `https://api.example.com/v1`. This document describes version 1 of the API.
 
 === How to Use This Specification
 
-This document is structured to provide all necessary details to interact with the API's endpoints, including method descriptions, request/response schemas, and examples. The OpenAPI 3.0 specification section can be imported into tools like Swagger UI, Postman, or Insomnia for testing and interaction.
+This specification is written in accordance with the OpenAPI 3.0 standards. It can be imported into tools like Swagger UI, Postman, or Insomnia for testing and interaction with the API endpoints. Developers and API consumers should refer to this document for understanding request and response formats and error handling.
 
 == OpenAPI 3.0 YAML Specification
 
@@ -24,9 +24,11 @@ openapi: 3.0.0
 info:
   title: Vehicle Management API
   version: 1.0.0
-  description: API for managing vehicle registrations
+  description: API for managing vehicle registrations and verifications.
 servers:
   - url: https://api.example.com/v1
+    description: Production server
+
 paths:
   /vehicles/register:
     post:
@@ -46,31 +48,35 @@ paths:
               schema:
                 $ref: '#/components/schemas/Vehicle'
         '400':
-          description: Invalid input
+          description: Invalid input provided
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+
   /vehicles/verify:
     get:
       summary: Verify vehicle registration
       operationId: verifyRegistration
       parameters:
-        - name: vin
-          in: query
-          required: true
+        - in: query
+          name: vin
           schema:
             type: string
-        - name: brand
-          in: query
           required: true
+          description: Vehicle Identification Number
+        - in: query
+          name: brand
           schema:
             type: string
-        - name: country
-          in: query
           required: true
+          description: Brand of the vehicle
+        - in: query
+          name: country
           schema:
             type: string
+          required: true
+          description: Country of registration
       responses:
         '200':
           description: Verification successful
@@ -84,6 +90,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+
 components:
   schemas:
     Vehicle:
@@ -91,29 +98,38 @@ components:
       properties:
         vin:
           type: string
+          description: Vehicle Identification Number
         brand:
           type: string
-        model:
-          type: string
-        device:
-          type: string
+          description: Brand of the vehicle
         country:
           type: string
+          description: Country of registration
+        model:
+          type: string
+          description: Model of the vehicle
+        device:
+          type: string
+          description: Device associated with the vehicle
         sop:
           type: string
           format: date
+          description: Start of production date
       required:
         - vin
         - brand
-        - model
         - country
+
     Error:
       type: object
       properties:
         message:
           type: string
+          description: Error message explaining what went wrong
         code:
           type: integer
+          format: int32
+          description: Error code
 ----
 
 == API Documentation
@@ -122,66 +138,72 @@ components:
 
 ==== Register Vehicle
 
-Endpoint to register a new vehicle. The request must include vehicle details such as VIN, brand, model, and country.
+`POST /vehicles/register`
 
-Example Request:
+Registers a new vehicle in the system. The request body must include details such as the VIN, brand, and country.
+
+===== Request Example
+
 [source,json]
 ----
-POST /vehicles/register
 {
-  "vin": "1HGCM82633A004352",
+  "vin": "1HGBH41JXMN109186",
   "brand": "Honda",
+  "country": "Japan",
   "model": "Civic",
-  "device": "OBD2",
-  "country": "USA",
+  "device": "Device123",
   "sop": "2023-01-01"
 }
 ----
 
-Example Response:
+===== Response Example
+
 [source,json]
 ----
-HTTP/1.1 201 Created
 {
-  "vin": "1HGCM82633A004352",
+  "vin": "1HGBH41JXMN109186",
   "brand": "Honda",
+  "country": "Japan",
   "model": "Civic",
-  "device": "OBD2",
-  "country": "USA",
+  "device": "Device123",
   "sop": "2023-01-01"
 }
 ----
 
 ==== Verify Registration
 
-Endpoint to verify vehicle registration details. Requires VIN, brand, and country as query parameters.
+`GET /vehicles/verify`
 
-Example Request:
+Verifies if a vehicle with the specified VIN, brand, and country is registered.
+
+===== Request Example
+
+[source]
+----
+GET /vehicles/verify?vin=1HGBH41JXMN109186&brand=Honda&country=Japan
+----
+
+===== Response Example
+
 [source,json]
 ----
-GET /vehicles/verify?vin=1HGCM82633A004352&brand=Honda&country=USA
-----
-
-Example Response:
-[source,json]
-----
-HTTP/1.1 200 OK
 {
-  "vin": "1HGCM82633A004352",
+  "vin": "1HGBH41JXMN109186",
   "brand": "Honda",
+  "country": "Japan",
   "model": "Civic",
-  "device": "OBD2",
-  "country": "USA",
+  "device": "Device123",
   "sop": "2023-01-01"
 }
 ----
 
 === Common Error Codes and Their Meanings
 
-- `400 Bad Request`: The request was unacceptable, often due to missing a required parameter.
-- `404 Not Found`: The requested resource does not exist.
-- `500 Internal Server Error`: An error occurred on the server side.
+- `400 Bad Request`: The request was invalid or cannot be served. Check the message for more details.
+- `404 Not Found`: The specified resource was not found. This can also occur if the request was malformed.
 
 === Rate Limiting Information
 
-Currently, there is no rate limiting in place for this API. This may be introduced in future versions to ensure fair usage.
+Currently, there is no rate limiting in place for this API. Future versions may include rate limiting policies to ensure fair usage.
+
+This document provides a detailed overview of the Vehicle Management API, including how to interact with it and understand its responses and errors.

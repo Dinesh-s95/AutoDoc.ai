@@ -1,12 +1,14 @@
+Below is a comprehensive ADOC document that includes an introduction to the API, a complete OpenAPI 3.0 YAML specification, and detailed API documentation based on the provided Java REST controller classes.
+
 = Identity Provider API Documentation
 
 == Introduction
 
-The Identity Provider API offers a set of endpoints for user authentication and management. This API allows clients to register new users, login existing users, and greet users. It is designed to be simple and straightforward for integration into various client applications.
+This API provides authentication and user management services for applications. It allows for user registration, login, and simple greeting endpoints.
 
 === Authentication Requirements
 
-Most endpoints require JWT-based authentication. Clients must authenticate by providing a valid JWT token in the `Authorization` header of their requests.
+The API uses JWT (JSON Web Tokens) for securing endpoints. Clients must authenticate by providing a valid JWT in the `Authorization` header of their HTTP requests.
 
 === Base URL and Versioning
 
@@ -14,7 +16,7 @@ The base URL for all API endpoints is `https://api.example.com/v1`. This documen
 
 === How to Use This Specification
 
-This document is structured according to the OpenAPI 3.0 specification. It can be imported into tools like Swagger UI, Postman, or Insomnia for interactive exploration and testing of the API endpoints.
+This specification is written in the OpenAPI 3.0 format and can be imported into tools like Swagger UI, Postman, or Insomnia for testing and interaction with the API.
 
 == OpenAPI 3.0 YAML Specification
 
@@ -27,17 +29,13 @@ info:
   description: API for managing user authentication and registration.
 servers:
   - url: https://api.example.com/v1
-    description: Production server
-
+    description: Main production server
 paths:
   /login:
     post:
-      summary: Logs in a user
-      operationId: loginUser
-      tags:
-        - User
+      summary: User login
+      description: Authenticates user and returns a JWT.
       requestBody:
-        description: User login credentials
         required: true
         content:
           application/json:
@@ -45,7 +43,7 @@ paths:
               $ref: '#/components/schemas/AuthRequest'
       responses:
         '200':
-          description: Successful login
+          description: Authentication successful
           content:
             application/json:
               schema:
@@ -56,14 +54,22 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /greet:
+    get:
+      summary: Greet the user
+      description: Returns a greeting message to the user.
+      responses:
+        '200':
+          description: Greeting message returned
+          content:
+            text/plain:
+              schema:
+                type: string
   /register:
     post:
-      summary: Registers a new user
-      operationId: registerUser
-      tags:
-        - User
+      summary: Register a new user
+      description: Registers a new user in the system.
       requestBody:
-        description: User registration data
         required: true
         content:
           application/json:
@@ -77,25 +83,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/Users'
         '400':
-          description: Invalid input data
+          description: Error in registration data
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-  /greet:
-    get:
-      summary: Greets the user
-      operationId: greetUser
-      tags:
-        - User
-      responses:
-        '200':
-          description: Greeting message returned
-          content:
-            text/plain:
-              schema:
-                type: string
-
 components:
   schemas:
     AuthRequest:
@@ -127,10 +119,8 @@ components:
           type: string
         code:
           type: integer
-
 security:
   - bearerAuth: []
-
 securitySchemes:
   bearerAuth:
     type: http
@@ -144,9 +134,7 @@ securitySchemes:
 
 ==== Login
 
-Endpoint: `POST /login`
-
-Description: Authenticates a user and returns a JWT token.
+Endpoint to authenticate a user and retrieve a token.
 
 Request:
 [source,json]
@@ -165,11 +153,19 @@ Response:
 }
 ----
 
+==== Greet
+
+Endpoint to receive a simple greeting message.
+
+Response:
+[source,text]
+----
+Hello, user!
+----
+
 ==== Register
 
-Endpoint: `POST /register`
-
-Description: Registers a new user in the system.
+Endpoint to register a new user.
 
 Request:
 [source,json]
@@ -189,27 +185,18 @@ Response:
 }
 ----
 
-==== Greet
-
-Endpoint: `GET /greet`
-
-Description: Returns a greeting message.
-
-Response:
-[source,text]
-----
-Hello, welcome to our service!
-----
-
 === Authentication Flows
 
-JWT tokens must be included in the `Authorization` header as `Bearer <token>`. These tokens are obtained through the login endpoint.
+Users must authenticate using the `/login` endpoint to receive a JWT. This token must be included in the `Authorization` header as `Bearer <token>` for subsequent requests to protected endpoints.
 
 === Common Error Codes and Their Meanings
 
 - `401 Unauthorized`: Authentication failed due to invalid credentials or token.
-- `400 Bad Request`: The request was malformed or missing required fields.
+- `400 Bad Request`: The request was invalid or missing required fields.
+- `500 Internal Server Error`: An unexpected error occurred on the server.
 
 === Rate Limiting Information
 
-Currently, there is no rate limiting enforced on the API endpoints. However, future versions may include rate limiting policies to ensure fair usage.
+Currently, there is no rate limiting enforced on the API endpoints. However, this may be subject to change as the API evolves.
+
+This document provides a comprehensive guide to interacting with the Identity Provider API, ensuring that developers can effectively integrate and utilize its features.

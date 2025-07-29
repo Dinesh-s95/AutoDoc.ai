@@ -2,19 +2,19 @@
 
 == Introduction
 
-This API provides services related to user management for a mobility platform. It allows operations such as user onboarding and vehicle assignment to users. The API is designed for internal use by other services within the mobility platform ecosystem.
+The User Management API provides functionalities related to managing users and their associated vehicles in a mobility service platform. This API allows operations such as user onboarding and vehicle assignment to users.
 
 === Authentication Requirements
 
-All API requests require authentication. The API uses Bearer Token authentication. Ensure you have obtained a valid token to access the endpoints.
+All API requests require authentication. Clients must provide a valid API key as a part of the request header.
 
 === Base URL and Versioning
 
-The base URL for the API is `https://api.example.com/`. This documentation refers to version 1 of the API (`v1`).
+The base URL for all API endpoints is `https://api.example.com/v1`. This documentation refers to version 1 of the API.
 
 === How to Use This Specification
 
-This document is structured to provide all necessary details to interact with the API effectively. Use the OpenAPI 3.0 specification provided to import into tools like Swagger UI, Postman, or Insomnia for testing and integration purposes.
+This document is structured to provide all necessary details to interact with the API effectively. Use this specification to understand the request and response formats and to learn about the available endpoints. You can import the YAML specification into tools like Swagger UI, Postman, or Insomnia to interact with the API directly.
 
 == OpenAPI 3.0 YAML Specification
 
@@ -24,7 +24,7 @@ openapi: 3.0.0
 info:
   title: User Management API
   version: 1.0.0
-  description: API for managing users and their vehicle assignments in a mobility platform.
+  description: API for managing users and their vehicles in a mobility service platform.
 servers:
   - url: https://api.example.com/v1
     description: Production server
@@ -54,10 +54,13 @@ paths:
             text/plain:
               schema:
                 type: string
+                example: "User onboarded successfully"
         '400':
-          description: Bad request if parameters are missing or invalid
-        '401':
-          description: Unauthorized if authentication fails
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
   /users/assign-vehicle:
     post:
       summary: Assign a vehicle to a user
@@ -87,26 +90,37 @@ paths:
             type: string
       responses:
         '200':
-          description: Vehicle successfully assigned to the user
+          description: Vehicle assigned to user
           content:
             text/plain:
               schema:
                 type: string
+                example: "Vehicle assigned successfully"
         '400':
-          description: Bad request if parameters are missing or invalid
-        '401':
-          description: Unauthorized if authentication fails
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
 
 components:
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
+  schemas:
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+        code:
+          type: integer
 
 security:
-  - bearerAuth: []
+  - ApiKeyAuth: []
 
+securitySchemes:
+  ApiKeyAuth:
+    type: apiKey
+    in: header
+    name: X-API-Key
 ----
 
 == API Documentation
@@ -115,53 +129,57 @@ security:
 
 ==== Onboard User
 
-Endpoint to onboard a new user into the system.
-
-POST `/users/onboard?username={username}&password={password}`
+Endpoint to onboard a new user into the system. Requires username and password.
 
 Example Request:
-[source,json]
+[source,http]
 ----
-POST /users/onboard?username=johndoe&password=securePassword123
-Authorization: Bearer <Your-Token>
+POST /users/onboard?username=johndoe&password=securepassword HTTP/1.1
+Host: api.example.com
+X-API-Key: yourapikey
 ----
 
 Example Response:
-[source]
+[source,http]
 ----
 HTTP/1.1 200 OK
-User successfully onboarded
+Content-Type: text/plain
+
+User onboarded successfully
 ----
 
-==== Assign Vehicle
+==== Assign Vehicle to User
 
-Endpoint to assign a vehicle to an existing user.
-
-POST `/users/assign-vehicle?username={username}&vin={vin}&brand={brand}&country={country}`
+Endpoint to assign a vehicle to an existing user. Requires username, vehicle identification number (VIN), brand, and country of the vehicle.
 
 Example Request:
-[source,json]
+[source,http]
 ----
-POST /users/assign-vehicle?username=johndoe&vin=1HGCM82633A004352&brand=Toyota&country=USA
-Authorization: Bearer <Your-Token>
+POST /users/assign-vehicle?username=johndoe&vin=1HGCM82633A004352&brand=Honda&country=USA HTTP/1.1
+Host: api.example.com
+X-API-Key: yourapikey
 ----
 
 Example Response:
-[source]
+[source,http]
 ----
 HTTP/1.1 200 OK
-Vehicle successfully assigned to the user
+Content-Type: text/plain
+
+Vehicle assigned successfully
 ----
 
 === Authentication Flows
 
-To access the API, a valid JWT must be included in the `Authorization` header as a Bearer token.
+Clients must include an API key in the header of each request. This key must be obtained from the API provider and is required to access the API.
 
-=== Common Error Codes
+=== Common Error Codes and Their Meanings
 
-- `400 Bad Request`: Your request is invalid or missing parameters.
-- `401 Unauthorized`: Your API token is wrong, expired, or missing.
+- `400 Bad Request`: The request was unacceptable, often due to missing a required parameter.
+- `401 Unauthorized`: No valid API key provided.
+- `404 Not Found`: The requested resource doesn't exist.
+- `500 Internal Server Error`: Something went wrong on the server side.
 
 === Rate Limiting Information
 
-Currently, there is no rate limiting enforced on this API. However, this may change in future versions to ensure fair usage.
+The API is rate-limited to 100 requests per minute per client. Exceeding this limit will result in a `429 Too Many Requests` response.
