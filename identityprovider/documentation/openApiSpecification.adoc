@@ -2,16 +2,19 @@
 
 == Introduction
 
-The Identity Provider API provides endpoints for user authentication and registration. This API is designed to facilitate secure access and identity management for applications.
+The Identity Provider API offers a set of RESTful endpoints for user authentication and registration. This API provides the necessary operations to manage user authentication states and register new users.
 
 === Authentication Requirements
-All sensitive endpoints require a valid JSON Web Token (JWT) for access. The token must be provided in the `Authorization` header as a Bearer token.
+
+The API uses JWT (JSON Web Tokens) for handling authentication. Clients must authenticate by providing a valid JWT in the `Authorization` header of their HTTP requests.
 
 === Base URL and Versioning
-The API is accessible at `https://api.example.com/v1`. This document describes version 1 of the API.
+
+The base URL for all API endpoints is `https://api.example.com/v1`. This API is currently at version 1.
 
 === How to Use This Specification
-This OpenAPI specification is designed to be used with tools that support the OpenAPI 3.0 format, such as Swagger UI, Postman, and Insomnia. You can import this YAML into any of these tools to interact with the API or generate client code.
+
+This document is structured according to the OpenAPI 3.0 specification. It can be imported into tools like Swagger UI, Postman, or Insomnia for interaction with the API endpoints. The document includes detailed descriptions of each endpoint, including required parameters, request bodies, and response formats.
 
 == OpenAPI 3.0 YAML Specification
 
@@ -21,7 +24,7 @@ openapi: 3.0.0
 info:
   title: Identity Provider API
   version: 1.0.0
-  description: API for user authentication and registration.
+  description: API for managing user authentication and registration.
 servers:
   - url: https://api.example.com/v1
     description: Production server
@@ -29,8 +32,10 @@ servers:
 paths:
   /login:
     post:
-      summary: User login
-      description: Authenticates a user and returns a JWT.
+      summary: Authenticate a user and return a JWT.
+      operationId: loginUser
+      tags:
+        - User
       requestBody:
         required: true
         content:
@@ -39,22 +44,23 @@ paths:
               $ref: '#/components/schemas/AuthRequest'
       responses:
         '200':
-          description: Authentication successful
+          description: Authentication successful.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthResponse'
         '401':
-          description: Authentication failed
+          description: Authentication failed.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
   /register:
     post:
-      summary: Register a new user
-      description: Registers a new user in the system.
+      summary: Register a new user.
+      operationId: registerUser
+      tags:
+        - User
       requestBody:
         required: true
         content:
@@ -63,13 +69,13 @@ paths:
               $ref: '#/components/schemas/Users'
       responses:
         '201':
-          description: User registered successfully
+          description: User registered successfully.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Users'
         '400':
-          description: Bad request
+          description: Error in registration data.
           content:
             application/json:
               schema:
@@ -87,13 +93,11 @@ components:
       required:
         - username
         - password
-
     AuthResponse:
       type: object
       properties:
         token:
           type: string
-
     Users:
       type: object
       properties:
@@ -104,7 +108,9 @@ components:
           type: string
         password:
           type: string
-
+      required:
+        - username
+        - password
     Error:
       type: object
       properties:
@@ -112,10 +118,11 @@ components:
           type: string
         code:
           type: integer
-
+      required:
+        - message
+        - code
 security:
   - bearerAuth: []
-
 securitySchemes:
   bearerAuth:
     type: http
@@ -129,61 +136,60 @@ securitySchemes:
 
 ==== Login
 
-Endpoint: `POST /login`
+Endpoint to authenticate a user and return a JWT.
 
-Description: Authenticates a user by their username and password, returning a JWT if successful.
+===== Example Request
 
-.Request Example
 [source,json]
 ----
 {
-  "username": "user@example.com",
-  "password": "password123"
+  "username": "john.doe",
+  "password": "examplepassword"
 }
 ----
 
-.Response Example (200 OK)
+===== Example Response
+
 [source,json]
 ----
 {
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJqb2huLmRvZSIsImV4cCI6MTYxOTc3MzIwMH0.QdQ69vHDjy9fTGl4kH8ZPprdb1VcEUiVgJt7auHlG4I"
 }
 ----
 
 ==== Register
 
-Endpoint: `POST /register`
+Endpoint to register a new user.
 
-Description: Registers a new user with a username and password.
+===== Example Request
 
-.Request Example
 [source,json]
 ----
 {
-  "username": "newuser@example.com",
-  "password": "newpassword123"
+  "username": "new.user",
+  "password": "newpassword"
 }
 ----
 
-.Response Example (201 Created)
+===== Example Response
+
 [source,json]
 ----
 {
-  "userId": 1,
-  "username": "newuser@example.com"
+  "userId": 101,
+  "username": "new.user"
 }
 ----
 
 === Authentication Flows
 
-To access protected endpoints, use the JWT obtained from the `/login` endpoint. Include this token as a Bearer token in the `Authorization` header of subsequent requests.
+Clients must authenticate by including a valid JWT in the `Authorization` header of their requests. The token can be obtained by making a successful login request.
 
 === Common Error Codes and Their Meanings
 
-- `401 Unauthorized`: Authentication failed due to invalid credentials or token.
-- `400 Bad Request`: The request was malformed or missing required fields.
-- `500 Internal Server Error`: An unexpected error occurred on the server.
+- `401 Unauthorized`: Authentication failed due to invalid credentials.
+- `400 Bad Request`: The request was unacceptable, often due to missing a required parameter or invalid data.
 
 === Rate Limiting Information
 
-Currently, there is no rate limiting enforced on the API endpoints. However, this may be subject to change as the API evolves.
+Currently, there are no rate limits enforced on the API. However, future versions may include rate limiting to prevent abuse.
