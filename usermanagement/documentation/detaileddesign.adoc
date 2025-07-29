@@ -1,7 +1,3 @@
-= User Management System Detailed Design Documentation
-
-This design document provides a comprehensive analysis of the User Management System implemented using Java Spring Boot. It includes class-by-class analysis, runtime view diagrams, entity relationship diagrams, and detailed component interactions.
-
 == Class-by-Class Analysis
 
 === UsermanagementApplication
