@@ -1,4 +1,5 @@
 === IdentityProviderClient
+
 Annotations::
 - `@FeignClient`: Declares that this interface is a Feign client.
 - `@PostMapping`: Indicates that this method of the Feign client would map to an HTTP POST.
