@@ -1,7 +1,3 @@
-= Enrollment System Architecture Design Document
-
-This document provides a comprehensive overview of the architecture for the Enrollment System, a Java Spring Boot application designed to manage user enrollments. The architecture is described in terms of service architecture, component descriptions, infrastructure, and system context.
-
 == 1. Service Architecture Overview
 
 === High-level System Architecture Diagram
