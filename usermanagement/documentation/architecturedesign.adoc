@@ -4,7 +4,7 @@
 
 === High-level System Architecture Diagram
 
-[plantuml, system_architecture]
+[plantuml, system-architecture-diagram, svg]
 ----
 @startuml
 package "User Management System" {
@@ -19,83 +19,70 @@ package "User Management System" {
   [UserManagementService] --> [UserManagementRepository]
   [UserManagementService] --> [IdentityProviderClient]
   [UserManagementService] --> [VehicleManagementClient]
-  [MobilityUser] --> [UserManagementRepository]
+  [UserManagementService] --> [MobilityUser]
 }
 @enduml
 ----
 
 === External System Connections and Integrations
 
-The User Management System interacts with the following external systems:
-- Identity Provider System (via IdentityProviderClient)
-- Vehicle Management System (via VehicleManagementClient)
+The User Management System integrates with an Identity Provider and a Vehicle Management System using Feign Clients.
 
 === Component Interaction Overview
 
-The User Management System consists of the following components:
-- UserManagementController: Handles HTTP requests and delegates actions to UserManagementService.
-- UserManagementService: Contains business logic and interacts with repositories and external systems.
-- UserManagementRepository: Manages the persistence of MobilityUser entities.
-- IdentityProviderClient: Integrates with the Identity Provider System for authentication.
-- VehicleManagementClient: Integrates with the Vehicle Management System for vehicle-related operations.
-- MobilityUser: Represents a user entity in the system.
+The UserManagementController interacts with the UserManagementService, which further interacts with the UserManagementRepository, IdentityProviderClient, VehicleManagementClient, and MobilityUser.
 
 === Technology Stack and Frameworks Used
 
-The User Management System is built using:
 - Java Spring Boot
-- Feign for REST client
-- JPA for data persistence
+- Feign Clients for REST API communication
+- JPA for entity management
+- Spring Security for authentication and authorization
 
 == Component Description
 
 === UserManagementController
 
-The UserManagementController is responsible for handling HTTP requests related to user management operations. It delegates the actual business logic to the UserManagementService component.
+The UserManagementController is responsible for handling HTTP requests related to user management operations. It communicates with the UserManagementService to perform user-related actions.
 
 === UserManagementService
 
-The UserManagementService component contains the core business logic of the system. It interacts with the UserManagementRepository for data persistence, IdentityProviderClient for authentication, and VehicleManagementClient for vehicle-related operations.
+The UserManagementService contains business logic for user management operations. It interacts with the UserManagementRepository for data persistence, IdentityProviderClient for authentication, and VehicleManagementClient for vehicle-related operations.
 
 === UserManagementRepository
 
-The UserManagementRepository component manages the persistence of MobilityUser entities in the database.
+The UserManagementRepository is responsible for database interactions related to user management entities.
 
 === IdentityProviderClient
 
-The IdentityProviderClient component integrates with the external Identity Provider System for user authentication.
+The IdentityProviderClient is a Feign Client used to communicate with the external Identity Provider for user authentication.
 
 === VehicleManagementClient
 
-The VehicleManagementClient component integrates with the external Vehicle Management System for vehicle-related operations.
+The VehicleManagementClient is a Feign Client used to communicate with the external Vehicle Management System for vehicle-related operations.
 
 === MobilityUser
 
-The MobilityUser component represents a user entity in the system with attributes like id, mobilityUserId, role, username, and vin.
-
-=== How Components Interact
-
-- UserManagementController interacts with UserManagementService for business logic.
-- UserManagementService interacts with UserManagementRepository for data persistence, IdentityProviderClient for authentication, and VehicleManagementClient for vehicle operations.
-- MobilityUser interacts with UserManagementRepository for database operations.
+The MobilityUser entity represents a user in the system and is managed by the UserManagementService.
 
 === External Dependencies and Integrations
 
-The User Management System depends on external systems like the Identity Provider System and Vehicle Management System for authentication and vehicle-related operations, respectively.
+- Identity Provider for user authentication
+- Vehicle Management System for vehicle operations
 
 == Infrastructure Architecture
 
 === Deployment Architecture
 
-The User Management System is deployed as a Spring Boot application on a cloud-based infrastructure.
+The User Management System is deployed as a Java Spring Boot application on a cloud-based platform.
 
 === Database Architecture
 
-The system uses a relational database to store user and related data. JPA is used for object-relational mapping.
+The system uses JPA for entity management and interacts with a relational database for data storage.
 
 === Security Architecture
 
-The system ensures security by integrating with the Identity Provider System for user authentication and authorization.
+Spring Security is used for authentication and authorization of users accessing the system.
 
 === Network Architecture
 
@@ -103,20 +90,18 @@ The system communicates with external systems over secure HTTP connections.
 
 == System Context
 
-=== External Systems and Interfaces
+=== External Systems and Their Interfaces
 
-- Identity Provider System: Provides authentication services via the IdentityProviderClient.
-- Vehicle Management System: Manages vehicle-related operations via the VehicleManagementClient.
+- Identity Provider: Provides user authentication services.
+- Vehicle Management System: Manages vehicle-related operations.
 
 === Data Flow Between Systems
 
-- User Management System sends requests to the Identity Provider System for user authentication.
-- User Management System interacts with the Vehicle Management System for vehicle-related operations.
+- UserManagementService interacts with IdentityProviderClient and VehicleManagementClient to perform user and vehicle operations.
 
-=== Authentication and Authorization Flows
+=== Authentication and Authorization Flows at System Level
 
-The system follows a secure authentication flow by delegating user authentication to the Identity Provider System.
+- Users are authenticated by the Identity Provider before accessing the User Management System.
+- Spring Security enforces authorization rules within the User Management System.
 
-== Conclusion
-
-The User Management System is a Java Spring Boot application that manages user-related operations by integrating with external systems for authentication and vehicle management. The system architecture ensures modularity, scalability, and security through component-based design and external system integrations.
+This document provides a high-level overview of the architecture design of the User Management System, detailing its components, interactions, external integrations, and infrastructure setup.

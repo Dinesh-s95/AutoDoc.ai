@@ -4,138 +4,245 @@
 
 === IdentityproviderApplication
 
-This class represents the main entry point of the Spring Boot application. It is annotated with @SpringBootApplication. The main method initializes and starts the Spring application context.
+Purpose:
+- Main class for Spring Boot application.
 
-Design Patterns Used: N/A
+Methods:
+- `public static void main(String[] args)`: Entry point for the application.
+
+Annotations:
+- `@SpringBootApplication`: Indicates this class is the main Spring Boot application class.
+
+Design Patterns:
+- N/A
 
 === JwtAuthFilter
 
-This class is a filter responsible for JWT authentication. It extends OncePerRequestFilter and overrides the doFilterInternal method to intercept and process JWT tokens.
+Purpose:
+- Custom filter for JWT authentication.
 
-Design Patterns Used: Chain of Responsibility
+Methods:
+- `protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException`: Handles JWT authentication logic.
+
+Annotations:
+- `@Autowired`, `@Component`, `@Override`, `@Slf4j`: Spring annotations for dependency injection and logging.
+
+Design Patterns:
+- N/A
 
 === SecurityConfig
 
-This class is a configuration class for Spring Security. It is annotated with @Configuration and @EnableWebSecurity. It provides configurations for authenticationManager, authenticationProvider, and securityFilterChain.
+Purpose:
+- Configuration class for security settings.
 
-Design Patterns Used: N/A
+Methods:
+- `public AuthenticationManager authenticationManager(final AuthenticationConfiguration authConfig) throws Exception`: Configures authentication manager.
+- `public AuthenticationProvider authenticationProvider()`: Configures authentication provider.
+- `public SecurityFilterChain securityFilterChain(final HttpSecurity http) throws Exception`: Configures security filter chain.
+
+Annotations:
+- `@Autowired`, `@Bean`, `@Configuration`, `@EnableWebSecurity`: Spring annotations for configuration.
+
+Design Patterns:
+- N/A
 
 === UserController
 
-This class is a REST controller handling user-related operations. It is annotated with @RestController. It provides endpoints for user login, registration, and greetings.
+Purpose:
+- Controller class for user-related operations.
 
-Design Patterns Used: N/A
+Methods:
+- `public ResponseEntity<Object> login(@RequestBody final Users user)`: Handles user login.
+- `public String greet()`: Returns a greeting message.
+- `public String greet2()`: Returns another greeting message.
+- `public Users registerUser(@RequestBody final Users user)`: Registers a new user.
+
+Annotations:
+- `@Autowired`, `@GetMapping`, `@PostMapping`, `@RequestBody`, `@RequestMapping`, `@RestController`: Spring annotations for REST API endpoints.
+
+Design Patterns:
+- N/A
 
 === AuthRequest
 
-This class represents the authentication request payload. It contains fields for username and password.
+Purpose:
+- Request DTO for authentication.
 
-Design Patterns Used: N/A
+Fields:
+- `password : String`
+- `username : String`
+
+Annotations:
+- `@Data`: Lombok annotation for generating getters, setters, and other boilerplate code.
+
+Design Patterns:
+- N/A
 
 === AuthResponse
 
-This class represents the authentication response payload.
+Purpose:
+- Response DTO for authentication.
 
-Design Patterns Used: N/A
+Design Patterns:
+- N/A
 
 === UserPrincipal
 
-This class represents the authenticated user principal. It implements UserDetails and contains methods for user details and authorities.
+Purpose:
+- Custom principal class for user details.
 
-Design Patterns Used: N/A
+Methods:
+- Various methods for user details.
+
+Fields:
+- `user : final Users`
+
+Annotations:
+- `@Override`: Indicates overridden methods.
+
+Design Patterns:
+- N/A
 
 === Users
 
-This class represents the User entity. It is annotated with @Entity and contains fields for userId, username, and password.
+Purpose:
+- Entity class representing users.
 
-Design Patterns Used: N/A
+Methods:
+- `public String getPassword()`
+- `public String getUsername()`
+
+Fields:
+- `password : String`
+- `userId : Long`
+- `username : String`
+
+Annotations:
+- `@Data`, `@Entity`, `@GeneratedValue`, `@Getter`, `@Id`, `@Setter`: Annotations for entity mapping and Lombok functionality.
+
+Design Patterns:
+- N/A
 
 === UserRepository
 
-This class is a Spring Data repository for User entities.
+Purpose:
+- Repository interface for user entity.
 
-Design Patterns Used: N/A
+Annotations:
+- `@Repository`: Spring Data annotation for repository.
+
+Design Patterns:
+- N/A
 
 === JWTService
 
-This class provides JWT token generation, validation, and extraction functionalities. It is annotated with @Service.
+Purpose:
+- Service class for JWT operations.
 
-Design Patterns Used: N/A
+Methods:
+- `public String extractUsername(String token)`: Extracts username from JWT token.
+- `public String generateToken(final String username)`: Generates JWT token.
+- `public boolean validateToken(String token)`: Validates JWT token.
+
+Fields:
+- `secretKey : final Key`
+
+Annotations:
+- `@Service`, `@Slf4j`: Spring annotations for service classes.
+
+Design Patterns:
+- N/A
 
 === UserService
 
-This class provides user-related services like user registration and loading user details. It is annotated with @Service.
+Purpose:
+- Service class for user-related operations.
 
-Design Patterns Used: N/A
+Methods:
+- `public UserDetails loadUserByUsername(final String username) throws UsernameNotFoundException`: Loads user details by username.
+- `public Users register(final Users user)`: Registers a new user.
+
+Fields:
+- `encoder : BCryptPasswordEncoder`
+- `userRepository : UserRepository`
+
+Annotations:
+- `@Autowired`, `@Override`, `@Service`: Spring annotations for service classes.
+
+Design Patterns:
+- N/A
 
 === IdentityproviderApplicationTests
 
-This class contains test cases for the Spring Boot application.
+Purpose:
+- Test class for the Spring Boot application.
 
-Design Patterns Used: N/A
+Annotations:
+- `@SpringBootTest`, `@Test`: Spring annotations for testing.
+
+Design Patterns:
+- N/A
 
 == Runtime View Diagrams
 
 [plantuml, runtime-view]
 ----
 title User Registration Flow
-
-UserController -> UserService: registerUser()
-UserService -> UserRepository: save()
+UserController -> UserService: register
+UserService -> UserRepository: save
 ----
 
 [plantuml, runtime-view]
 ----
 title Authentication/Login Flow
-
-UserController -> AuthenticationManager: login()
-AuthenticationManager -> UserService: loadUserByUsername()
-UserService -> UserRepository: findByUsername()
+UserController -> AuthenticationManager: authenticate
+AuthenticationManager -> AuthenticationProvider: authenticate
+AuthenticationProvider -> UserService: loadUserByUsername
+UserService -> UserRepository: findByUsername
 ----
 
 [plantuml, runtime-view]
 ----
 title JWT Token Validation Flow
+JwtAuthFilter -> JWTService: validateToken
+----
 
-JwtAuthFilter -> JWTService: validateToken()
+[plantuml, runtime-view]
+----
+title Key Business Process Flow
+// Add your custom business process flow here
 ----
 
 [plantuml, runtime-view]
 ----
 title Exception Handling Flow
-
-UserController -> ExceptionHandler: handleException()
+// Add your exception handling flow here
 ----
 
 == Entity Relationship Diagram
 
-[plantuml, er-diagram]
+[plantuml, erd]
 ----
 entity Users {
-  + userId: Long
-  + username: String
-  + password: String
+  Long userId
+  String username
+  String password
 }
 
-Users ||--o UserRepository : Repository
+Users ||--o UserRepository : Contains
+
+entity Users {
+  Long userId
+  String username
+  String password
+}
 ----
 
 == Detailed Component Interactions
 
-The application follows a typical layered architecture with interactions between Controller, Service, and Repository layers. Here is a brief overview of the component interactions:
+- Controller-Service-Repository interactions: Controllers interact with services, which in turn interact with repositories for data operations.
+- Data flow through layers: Data flows from controllers to services and then to repositories for CRUD operations.
+- Exception propagation: Exceptions are handled at different layers and propagated up the stack as needed.
+- Transaction boundaries: Transactions are managed at the service layer to ensure data consistency.
 
-- UserController interacts with UserService for user-related operations.
-- UserService interacts with UserRepository for database operations.
-- JwtAuthFilter interacts with JWTService for JWT token handling.
-- SecurityConfig provides configurations for authentication and security filters.
-- UserPrincipal represents the authenticated user details.
-- JWTService handles JWT token generation, validation, and extraction.
-- UserRepository is the Spring Data repository for User entities.
-
-Data flows from the Controller layer to the Service layer and then to the Repository layer. Exception handling is centralized using ExceptionHandler classes to handle and propagate exceptions across layers. Transaction boundaries are managed by Spring's transaction management.
-
-This design ensures separation of concerns, modularity, and maintainability of the application.
-
-== Conclusion
-
-This detailed design documentation provides insights into the class structures, runtime flows, entity relationships, and component interactions of the Java Spring Boot application. Developers can refer to this document for a deeper understanding of the implementation design and architecture.
+This detailed design documentation provides insights into the class structure, runtime flows, entity relationships, and component interactions of the Java Spring Boot application. Developers can refer to this document for a comprehensive understanding of the implementation design.

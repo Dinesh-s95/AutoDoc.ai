@@ -10,9 +10,7 @@
 package "Identity Provider System" {
   [UserController] --> [UserService]
   [UserController] --> [JWTService]
-  [UserController] --> [AuthenticationManager]
   [UserService] --> [UserRepository]
-  [UserService] --> [BCryptPasswordEncoder]
   [JWTService] --> [Key]
   [JwtAuthFilter] --> [UserService]
   [SecurityConfig] --> [JwtAuthFilter]
@@ -24,83 +22,80 @@ package "Identity Provider System" {
 
 === External System Connections and Integrations
 
-The Identity Provider System interacts with external systems for authentication and authorization purposes. It integrates with databases for user data storage and utilizes JWT for token-based authentication.
+The Identity Provider System interacts with external systems for authentication and authorization services.
 
 === Component Interaction Overview
 
-The components within the system interact as follows:
-- UserController communicates with UserService, JWTService, and AuthenticationManager.
-- UserService interacts with UserRepository and BCryptPasswordEncoder.
-- JwtAuthFilter collaborates with UserService.
-- SecurityConfig utilizes JwtAuthFilter and UserDetailsService.
+The components interact as follows:
+- UserController communicates with UserService and JWTService.
+- UserService interacts with UserRepository for user data operations.
+- JWTService manages token generation and validation.
+- JwtAuthFilter filters and authenticates requests.
 
 === Technology Stack and Frameworks Used
 
-The system is built using Java Spring Boot framework. Key technologies and frameworks include:
-- Spring Boot
+- Java Spring Boot
 - Spring Security
-- JWT (JSON Web Token)
-- Hibernate
+- Spring Data JPA
+- Lombok
 - BCryptPasswordEncoder
 
 == Component Description
 
 === UserController
 
-The UserController is a REST controller responsible for handling user-related endpoints. It interacts with UserService for user operations, JWTService for token management, and AuthenticationManager for authentication.
+The UserController is responsible for handling user-related HTTP requests. It interacts with UserService and JWTService for user operations.
 
 === UserService
 
-The UserService component manages user-related operations such as user registration and user details retrieval. It interacts with UserRepository for database operations and BCryptPasswordEncoder for password encoding.
+The UserService component manages user-related business logic and interacts with the UserRepository for data persistence.
 
 === JwtAuthFilter
 
-The JwtAuthFilter component is responsible for filtering and validating JWT tokens. It collaborates with UserService to perform token validation.
+JwtAuthFilter is responsible for filtering and authenticating incoming requests using JWT tokens. It collaborates with UserService for user authentication.
 
 === SecurityConfig
 
-SecurityConfig is responsible for configuring security settings within the application. It utilizes JwtAuthFilter for token filtering and UserDetailsService for user details retrieval.
+SecurityConfig configures security settings for the application, including authentication providers and filters.
 
 === UserRepository
 
-The UserRepository component handles database operations related to user entities.
+UserRepository provides data access methods for user entities using Spring Data JPA.
 
 === JWTService
 
-JWTService manages JWT token generation, validation, and extraction. It uses a cryptographic key for token operations.
+JWTService handles JWT token generation, validation, and extraction of user details from tokens.
 
 == Infrastructure Architecture
 
 === Deployment Architecture
 
-The Identity Provider System is deployed as a Spring Boot application on a cloud-based server environment. It follows a microservices architecture for scalability and flexibility.
+The Identity Provider System is deployed as a Spring Boot application on a cloud platform like AWS or Azure.
 
 === Database Architecture
 
-The system utilizes a relational database to store user information securely. Hibernate ORM is used for database interaction.
+The system uses Spring Data JPA with an underlying relational database for user data storage.
 
 === Security Architecture
 
-Security within the system is managed using Spring Security framework. JWT tokens are used for authentication and authorization purposes.
+Security is implemented using Spring Security with JWT tokens for authentication and authorization.
 
 === Network Architecture
 
-The system communicates over HTTP protocols for client-server interactions. Secure connections are established using HTTPS for data encryption.
+The system communicates over HTTP protocols for client-server interactions.
 
 == System Context
 
-=== External Systems and Their Interfaces
+=== External Systems and Interfaces
 
-The Identity Provider System interfaces with external systems for user authentication and authorization. It communicates with client applications over RESTful APIs for user management operations.
+The Identity Provider System interacts with external systems for user authentication and authorization services.
 
 === Data Flow Between Systems
 
-Data flows between the Identity Provider System and external systems through secure API calls. User information is exchanged securely using JWT tokens.
+User authentication requests flow from external systems to the Identity Provider System for validation and token generation.
 
 === Authentication and Authorization Flows at System Level
 
-Authentication and authorization are managed at the system level using Spring Security configurations. JWT tokens are issued for user authentication and access control.
+The system follows a JWT-based authentication flow where users authenticate with credentials to receive tokens for accessing protected resources.
 
-== Conclusion
-
-The Identity Provider System architecture is designed to provide secure and efficient user authentication and authorization services. By leveraging Spring Boot and related frameworks, the system ensures robust security measures and seamless integration with external systems.
+This document provides an overview of the architecture design for the Identity Provider System, highlighting component interactions, external integrations, and infrastructure details.

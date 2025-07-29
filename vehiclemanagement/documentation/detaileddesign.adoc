@@ -5,128 +5,81 @@
 === Vehicle
 
 Purpose:
-- The `Vehicle` class represents a vehicle entity in the system.
-- It contains attributes such as brand, country, device, model, SOP (Start of Production), and VIN (Vehicle Identification Number).
+- Represents a vehicle entity with attributes like brand, country, device, model, sop, and vin.
+- Annotated with @Entity to mark it as a JPA entity.
+- Contains getters and setters for the attributes.
 
 Methods:
-- `getSop()`: Returns the Start of Production date.
+- `getSop()`: Returns the start of production date.
 - `getBrand()`: Returns the brand of the vehicle.
 - `getCountry()`: Returns the country of the vehicle.
 - `getDevice()`: Returns the device of the vehicle.
 - `getModel()`: Returns the model of the vehicle.
-- `getVin()`: Returns the Vehicle Identification Number.
+- `getVin()`: Returns the vehicle identification number.
 - `setBrand(String brand)`: Sets the brand of the vehicle.
 - `setCountry(String country)`: Sets the country of the vehicle.
 - `setDevice(String device)`: Sets the device of the vehicle.
 - `setModel(String model)`: Sets the model of the vehicle.
-- `setSop(LocalDate sop)`: Sets the Start of Production date.
-- `setVin(String vin)`: Sets the Vehicle Identification Number.
-
-Annotations:
-- `@Entity`: Indicates that this class is an entity and is mapped to a database table.
-- `@Id`: Specifies the primary key of the entity.
-- `@NotBlank`: Validates that the annotated field is not null or empty.
-- `@NotNull`: Validates that the annotated field is not null.
-- `@Table`: Specifies the table name for the entity in the database.
+- `setSop(LocalDate sop)`: Sets the start of production date.
+- `setVin(String vin)`: Sets the vehicle identification number.
 
 Design Patterns:
-- This class follows the Entity design pattern for representing database entities.
+- Entity pattern for database persistence.
 
 === VehiclemanagementApplication
 
 Purpose:
-- The `VehiclemanagementApplication` class serves as the entry point for the Spring Boot application.
+- Main application class annotated with @SpringBootApplication.
 
 Methods:
-- `main(String[] args)`: The main method that starts the Spring Boot application.
-
-Annotations:
-- `@SpringBootApplication`: Indicates that this class is the main configuration class for the Spring Boot application.
+- `main(String[] args)`: Entry point for the Spring Boot application.
 
 === VehicleController
 
 Purpose:
-- The `VehicleController` class handles HTTP requests related to vehicles.
+- REST controller for handling vehicle-related endpoints.
+- Annotated with @RestController to mark it as a controller.
+- Contains methods for registering a vehicle and verifying registration.
 
 Methods:
-- `registerVehicle(Vehicle vehicle)`: Registers a new vehicle in the system.
-- `verifyRegistration(String vin, String brand, String country)`: Verifies the registration details of a vehicle.
-
-Annotations:
-- `@Autowired`: Injects dependencies into the controller.
-- `@GetMapping`: Handles HTTP GET requests.
-- `@PostMapping`: Handles HTTP POST requests.
-- `@RequestBody`: Binds the HTTP request body to a method parameter.
-- `@RequestMapping`: Maps HTTP requests to handler methods.
-- `@RequestParam`: Binds a method parameter to a web request parameter.
-- `@RestController`: Indicates that this class is a REST controller.
-- `@Validated`: Validates method arguments.
+- `registerVehicle(Vehicle vehicle)`: Registers a new vehicle.
+- `verifyRegistration(String vin, String brand, String country)`: Verifies the registration details.
 
 Fields:
-- `vehicleRepository`: Instance of `VehicleRepository` for interacting with vehicle data.
+- `vehicleRepository`: Instance of VehicleRepository for data access.
 
 Design Patterns:
-- This class follows the Controller design pattern for handling HTTP requests.
+- Controller pattern for handling HTTP requests.
 
 === VehicleRepository
 
 Purpose:
-- The `VehicleRepository` class provides methods for interacting with the database to manage vehicle entities.
-
-Annotations:
-- `@Repository`: Indicates that this class is a repository component for database operations.
+- Repository interface for interacting with the database.
+- Annotated with @Repository for Spring Data JPA.
 
 === VehiclemanagementApplicationTests
 
 Purpose:
-- The `VehiclemanagementApplicationTests` class contains test cases for the Spring Boot application.
-
-Annotations:
-- `@SpringBootTest`: Indicates that the tests should load the Spring application context.
-- `@Test`: Marks a method as a test method.
+- Test class for testing the application.
+- Annotated with @SpringBootTest and @Test for Spring Boot testing.
 
 == Runtime View Diagrams
 
 [plantuml, runtime-view]
 ----
-title User Registration Flow
-VehicleController -> VehicleRepository: Save Vehicle
-VehicleRepository --> VehicleController: Vehicle Saved
-----
+title Vehicle Management System
 
-[plantuml, runtime-view]
-----
-title Authentication/Login Flow
-User -> VehicleController: Login Request
-VehicleController -> AuthenticationProvider: Authenticate User
-AuthenticationProvider --> VehicleController: Authentication Result
-----
+actor User
 
-[plantuml, runtime-view]
-----
-title JWT Token Validation Flow
-User -> VehicleController: Request with JWT Token
-VehicleController -> JwtTokenValidator: Validate Token
-JwtTokenValidator --> VehicleController: Token Validation Result
-----
+User -> VehicleController: registerVehicle()
+VehicleController -> VehicleRepository: save()
+VehicleRepository --> VehicleController: Saved
+VehicleController -> User: Success Response
 
-[plantuml, runtime-view]
-----
-title Key Business Process Flow
-User -> VehicleController: Request
-VehicleController -> Service: Process Request
-Service -> Repository: Retrieve Data
-Repository --> Service: Data Retrieved
-Service --> VehicleController: Response
-----
-
-[plantuml, runtime-view]
-----
-title Exception Handling Flow
-User -> VehicleController: Request
-VehicleController -> Service: Process Request
-Service -> ExceptionHandler: Handle Exception
-ExceptionHandler --> VehicleController: Exception Response
+User -> VehicleController: verifyRegistration()
+VehicleController -> VehicleRepository: findByVin()
+VehicleRepository --> VehicleController: Vehicle Details
+VehicleController -> User: Verification Response
 ----
 
 == Entity Relationship Diagram
@@ -134,28 +87,23 @@ ExceptionHandler --> VehicleController: Exception Response
 [plantuml, er-diagram]
 ----
 entity Vehicle {
-  + Long id
-  --
-  + String brand
-  + String country
-  + String device
-  + String model
-  + LocalDate sop
-  + String vin
+  @Id
+  vin: String
+  brand: String
+  country: String
+  device: String
+  model: String
+  sop: LocalDate
 }
 
-Vehicle ||--o VehicleRepository : CRUD
+Vehicle --|> BaseEntity
 ----
 
 == Detailed Component Interactions
 
-- Controller-Service-Repository interactions:
-  - The `VehicleController` interacts with the `VehicleService`, which in turn interacts with the `VehicleRepository` for CRUD operations.
-- Data flow through layers:
-  - HTTP requests flow from the controller to the service layer for processing and then to the repository for data access.
-- Exception propagation:
-  - Exceptions thrown in the service layer are handled by the exception handler in the controller layer.
-- Transaction boundaries:
-  - Transactions are managed by Spring's declarative transaction management, ensuring atomicity and consistency.
+- Controller-Service-Repository interactions: VehicleController interacts with VehicleRepository for data operations.
+- Data flow through layers: HTTP requests flow from the controller to the service layer and then to the repository for data access.
+- Exception propagation: Exceptions are handled at each layer and propagated to the appropriate handler.
+- Transaction boundaries: Transactions are managed by Spring's transaction management for database operations.
 
-This document provides a detailed overview of the design and interactions within the Java Spring Boot application.
+This detailed design documentation provides insights into the architecture, design patterns, and interactions within the Vehicle Management System. Developers can refer to this document for a comprehensive understanding of the implementation design.

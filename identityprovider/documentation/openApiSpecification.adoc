@@ -1,6 +1,6 @@
 = Introduction
 
-This API provides endpoints for user authentication and registration. Authentication is required to access certain endpoints. The base URL for this API is `https://api.example.com` and the version is `v1`. To use this specification, import the YAML file into your preferred API documentation tool.
+This API provides endpoints for user authentication and registration. It requires JWT token-based authentication for most endpoints. The base URL for this API is `https://api.example.com/v1`. To use this specification, import the YAML file into your API documentation tool or API client.
 
 == OpenAPI 3.0 Specification
 
@@ -16,7 +16,7 @@ servers:
 paths:
   /login:
     post:
-      summary: User login
+      summary: Login user
       requestBody:
         required: true
         content:
@@ -41,7 +41,7 @@ paths:
               $ref: '#/components/schemas/Users'
       responses:
         '200':
-          description: User registered successfully
+          description: User registration successful
           content:
             application/json:
               schema:
@@ -73,38 +73,69 @@ components:
         password:
           type: string
 security:
-  - bearerAuth: []
-
+  - JWTAuth: []
 securitySchemes:
-  bearerAuth:
+  JWTAuth:
     type: http
     scheme: bearer
-    bearerFormat: JWT
 ----
 
 == API Documentation
 
-=== Endpoints
+=== /login (POST)
 
-==== User Login [/login]
+Login a user by providing username and password.
 
-User login endpoint.
+[source,json]
+----
+{
+  "username": "john_doe",
+  "password": "password123"
+}
+----
 
-==== User Registration [/register]
+Response:
+- Status: 200 OK
+[source,json]
+----
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VybmFtZSI6ImpvaG5fZG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.3nR5tOv0y3b3Jv5j4I1m5g"
+}
 
-Register a new user.
+=== /register (POST)
 
-=== Authentication Flows
+Register a new user by providing username and password.
 
-To access the endpoints, include a valid JWT token in the Authorization header.
+[source,json]
+----
+{
+  "username": "jane_smith",
+  "password": "securepassword456"
+}
+----
 
-=== Common Error Codes
+Response:
+- Status: 200 OK
+[source,json]
+----
+{
+  "userId": 123,
+  "username": "jane_smith"
+}
+----
 
-- 401 Unauthorized: Invalid credentials
-- 400 Bad Request: Invalid request parameters
+== Authentication Flows
 
-=== Rate Limiting
+This API uses JWT token-based authentication. To access protected endpoints, include the JWT token in the `Authorization` header with the value `Bearer <token>`.
 
-Rate limiting is not implemented in this API.
+== Common Error Codes
+
+- 401 Unauthorized: Invalid credentials or missing JWT token
+- 403 Forbidden: Access to the resource is forbidden
+- 404 Not Found: Resource not found
+
+== Rate Limiting
+
+This API does not have rate limiting implemented.
 
 This completes the OpenAPI Specification and API documentation for the User Authentication API.

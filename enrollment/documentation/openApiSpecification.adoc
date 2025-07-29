@@ -1,78 +1,79 @@
-= Introduction
+== Introduction
 
-This API provides endpoints for enrollment services. Authentication is required using API keys. The base URL for this API is `https://api.example.com/v1`. To use this specification, import the YAML file into your API documentation tool.
+This document provides the OpenAPI 3.0 Specification for the Enrollment API. This API allows users to nominate primary users for enrollment. The API requires authentication using OAuth 2.0. The base URL for this API is `https://api.example.com/v1`. 
 
-== OpenAPI Specification
+To use this specification, import the YAML file into tools like Swagger UI, Postman, or Insomnia to explore and interact with the API endpoints.
+
+== OpenAPI 3.0 Specification
 
 [source,yaml]
 ----
 openapi: 3.0.0
 info:
   title: Enrollment API
-  description: API for enrollment services
+  description: API for nominating primary users for enrollment
   version: 1.0.0
 servers:
   - url: https://api.example.com/v1
 paths:
-  /enrollment/nominatePrimary:
+  /enrollment/nominate:
     post:
-      summary: Nominate a primary user
+      summary: Nominate a primary user for enrollment
       parameters:
         - name: username
           in: query
-          description: The username of the primary user
           required: true
           schema:
             type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
       responses:
         '200':
           description: Successful nomination
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: "Primary user nominated successfully"
+                $ref: '#/components/schemas/UserResponseDTO'
         '400':
           description: Bad request
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: "Invalid username provided"
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  message:
-                    type: string
-                    example: "Authentication failed"
+                $ref: '#/components/schemas/Error'
 components:
   schemas:
-    ErrorResponse:
+    UserResponseDTO:
       type: object
       properties:
+        mobilityUserId:
+          type: string
+        username:
+          type: string
+        vin:
+          type: string
+    Error:
+      type: object
+      properties:
+        code:
+          type: integer
         message:
           type: string
-          example: "Error message"
+security:
+  - OAuth2: []
 ----
 
 == API Documentation
 
-=== Endpoint: Nominate Primary User
+=== Endpoint: Nominate Primary User [POST /enrollment/nominate]
 
-This endpoint allows nominating a primary user.
-
-==== Request
-
+.Nominate a primary user for enrollment.
+.Request:
 [source,json]
 ----
 {
@@ -80,24 +81,38 @@ This endpoint allows nominating a primary user.
 }
 ----
 
-==== Response
-
+.Response (200 - OK):
 [source,json]
 ----
 {
-  "message": "Primary user nominated successfully"
+  "mobilityUserId": "12345",
+  "username": "john_doe",
+  "vin": "ABC123"
+}
+----
+
+.Response (400 - Bad Request):
+[source,json]
+----
+{
+  "code": 400,
+  "message": "Invalid request"
 }
 ----
 
 === Authentication
 
-Authentication is required using API keys.
+This API uses OAuth 2.0 for authentication. Obtain an access token and include it in the request headers as `Authorization: Bearer <access_token>`.
 
 === Common Error Codes
 
-- `400`: Bad request - Invalid username provided
-- `401`: Unauthorized - Authentication failed
+- `400`: Bad request - The request was invalid.
+- `401`: Unauthorized - Authentication is required.
+- `403`: Forbidden - The request is not allowed.
+- `404`: Not found - The requested resource was not found.
 
 === Rate Limiting
 
-Rate limiting is not applicable for this API.
+Rate limiting is not implemented for this API.
+
+This completes the OpenAPI Specification and API documentation for the Enrollment API.

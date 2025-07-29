@@ -1,12 +1,6 @@
 = Introduction
 
-This OpenAPI Specification document provides a detailed overview of the Vehicle Management API. The API allows users to register vehicles and verify vehicle registrations. 
-
-**Authentication Requirements**: This API does not require authentication for the provided endpoints.
-
-**Base URL and Versioning**: The base URL for this API is `https://api.example.com` and the current version is `v1`.
-
-**How to Use this Specification**: You can import this specification into tools like Swagger UI, Postman, or Insomnia to explore and interact with the API endpoints.
+This OpenAPI Specification document outlines the REST API for managing vehicles. The API provides endpoints for registering vehicles and verifying vehicle registration. Authentication is required for all endpoints using OAuth 2.0 with the "Bearer" token type. The base URL for this API is `https://api.example.com/v1`. To use this specification, import the YAML file into your API documentation tool or API client.
 
 == OpenAPI 3.0 Specification
 
@@ -15,7 +9,7 @@ This OpenAPI Specification document provides a detailed overview of the Vehicle 
 openapi: 3.0.0
 info:
   title: Vehicle Management API
-  description: API for registering and verifying vehicle information
+  description: REST API for managing vehicles
   version: 1.0.0
 servers:
   - url: https://api.example.com/v1
@@ -31,11 +25,13 @@ paths:
               $ref: '#/components/schemas/Vehicle'
       responses:
         '200':
-          description: Successful registration
+          description: Vehicle registration successful
+        '400':
+          description: Bad request
           content:
             application/json:
-              example:
-                message: Vehicle registered successfully
+              schema:
+                $ref: '#/components/schemas/Error'
   /vehicles/verify:
     get:
       summary: Verify vehicle registration
@@ -55,11 +51,13 @@ paths:
             type: string
       responses:
         '200':
-          description: Vehicle registration verification
+          description: Vehicle registration verified
+        '400':
+          description: Bad request
           content:
             application/json:
-              example:
-                valid: true
+              schema:
+                $ref: '#/components/schemas/Error'
 components:
   schemas:
     Vehicle:
@@ -81,15 +79,21 @@ components:
     Error:
       type: object
       properties:
+        code:
+          type: integer
         message:
           type: string
+security:
+  - OAuth2:
+      - 'read'
+      - 'write'
 ----
 
 == API Documentation
 
-=== /vehicles/register
+=== /vehicles/register (POST)
 
-This endpoint allows users to register a new vehicle.
+Register a new vehicle.
 
 ==== Request
 
@@ -98,10 +102,10 @@ This endpoint allows users to register a new vehicle.
 {
   "brand": "Toyota",
   "country": "Japan",
-  "device": "SUV",
-  "model": "RAV4",
+  "device": "Car",
+  "model": "Corolla",
   "sop": "2022-01-01",
-  "vin": "1234567890"
+  "vin": "123456789"
 }
 ----
 
@@ -114,35 +118,31 @@ This endpoint allows users to register a new vehicle.
 }
 ----
 
-=== /vehicles/verify
+=== /vehicles/verify (GET)
 
-This endpoint allows users to verify the registration of a vehicle.
+Verify vehicle registration.
 
-==== Request
+==== Parameters
 
-- **vin** (required): The Vehicle Identification Number (VIN) of the vehicle.
-- **brand**: The brand of the vehicle.
-- **country**: The country of registration.
+- `vin` (required, string): Vehicle Identification Number
+- `brand` (string): Brand of the vehicle
+- `country` (string): Country of registration
 
 ==== Response
-
-- **valid**: Boolean value indicating if the registration is valid.
-
-=== Authentication Flows
-
-No authentication is required for this API.
-
-=== Common Error Codes
-
-In case of errors, the API will return a JSON response with an error message.
 
 [source,json]
 ----
 {
-  "message": "Error message here"
+  "message": "Vehicle registration verified"
 }
 ----
 
-=== Rate Limiting
+=== Authentication
 
-Rate limiting is not implemented for this API.
+All endpoints require OAuth 2.0 authentication with the "Bearer" token type. Ensure you include the access token in the request headers.
+
+=== Error Codes
+
+- `400`: Bad request. Check the request parameters and try again.
+
+This completes the OpenAPI Specification for the Vehicle Management API.

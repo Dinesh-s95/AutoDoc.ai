@@ -4,120 +4,85 @@
 
 === UsermanagementApplication
 
-This class represents the entry point of the Spring Boot application. It contains the main method for starting the application. The annotations `@EnableFeignClients` and `@SpringBootApplication` are used to enable Feign clients and mark the class as a Spring Boot application. No specific design patterns are used in this class.
+The `UsermanagementApplication` class is the main entry point for the Spring Boot application. It contains the `main` method which starts the Spring Boot application. The class is annotated with `@EnableFeignClients` and `@SpringBootApplication` for enabling Feign clients and marking it as a Spring Boot application.
 
-Methods:
-- `public static void main(String[] args)`: Entry point of the application.
+Design Patterns Used: N/A
 
 === IdentityProviderClient
 
-This class is a Feign client used for communication with an external identity provider. The annotations `@FeignClient`, `@PostMapping`, and `@RequestBody` are used for defining the Feign client and request mapping. This class follows the Remote Service design pattern.
+The `IdentityProviderClient` class is a Feign client used to communicate with an external identity provider service. It is annotated with `@FeignClient`, `@PostMapping`, and `@RequestBody` to specify the Feign client and HTTP method mappings.
 
-Methods: No specific methods defined.
+Design Patterns Used: N/A
 
 === VehicleManagementClient
 
-Similar to `IdentityProviderClient`, this class is a Feign client for interacting with a vehicle management service. It uses annotations like `@FeignClient`, `@GetMapping`, and `@RequestParam` for defining the Feign client and request mapping. This class also follows the Remote Service design pattern.
+The `VehicleManagementClient` class is a Feign client used to interact with a vehicle management service. It is annotated with `@FeignClient`, `@GetMapping`, and `@RequestParam` for defining Feign client and HTTP method mappings.
 
-Methods: No specific methods defined.
+Design Patterns Used: N/A
 
 === UserManagementController
 
-This class acts as the REST controller for user management operations. It contains methods for assigning a vehicle to a user and onboarding a new user. The annotations `@Autowired`, `@PostMapping`, `@RequestMapping`, `@RequestParam`, and `@RestController` are used for dependency injection, request mapping, and marking the class as a REST controller. No specific design patterns are used in this class.
+The `UserManagementController` class is a REST controller responsible for handling user management related endpoints. It contains methods like `assignVehicle` and `onboardUser` annotated with `@PostMapping`, `@RequestMapping`, and `@RequestParam` for mapping HTTP requests to methods.
 
-Methods:
-- `public String assignVehicle(@RequestParam String username, @RequestParam String vin, @RequestParam String brand, @RequestParam String country)`: Assigns a vehicle to a user.
-- `public String onboardUser(@RequestParam String username, @RequestParam String password)`: Onboards a new user.
-
-Fields:
-- `service : UserManagementService`: Reference to the service layer for user management operations.
+Design Patterns Used: N/A
 
 === MobilityUser
 
-This class represents a user entity with attributes like `id`, `mobilityUserId`, `role`, `username`, and `vin`. It is annotated with `@Entity`, `@GeneratedValue`, `@Getter`, `@Id`, and `@Setter` for defining it as an entity, generating IDs, and providing getters and setters. The `@Table` annotation specifies the table name in the database. No specific design patterns are used in this class.
+The `MobilityUser` class represents a user entity with attributes like `id`, `mobilityUserId`, `role`, `username`, and `vin`. It is annotated with `@Entity`, `@GeneratedValue`, `@Getter`, `@Id`, `@Setter`, and `@Table` to define it as an entity with JPA annotations.
 
-Methods: No specific methods defined.
+Design Patterns Used: N/A
 
 === UserManagementRepository
 
-This class is the repository for managing `MobilityUser` entities. It does not have any specific annotations or methods. It follows the Repository design pattern for data access.
+The `UserManagementRepository` class is a Spring Data repository interface for managing `MobilityUser` entities. It contains methods for CRUD operations on the `MobilityUser` entity.
 
-Methods: No specific methods defined.
+Design Patterns Used: N/A
 
 === UserManagementService
 
-This class contains business logic for user management operations. It provides methods for getting a user by username, onboarding a user, and assigning a vehicle to a user. The annotations `@Autowired` and `@Service` are used for dependency injection and marking the class as a service. No specific design patterns are used in this class.
+The `UserManagementService` class contains business logic for user management operations. It has methods like `getUserByUsername`, `onboardUser`, and `assignVehicleToUser` to interact with the repository and external services. It is annotated with `@Autowired` and `@Service`.
 
-Methods:
-- `public Optional<MobilityUser> getUserByUsername(String username)`: Retrieves a user by username.
-- `public String onboardUser(String username, String password)`: Onboards a new user.
-- `public void assignVehicleToUser(String username, String vin, String brand, String country)`: Assigns a vehicle to a user.
-
-Fields:
-- `identityProvider : IdentityProviderClient`: Reference to the identity provider client.
-- `repo : UserManagementRepository`: Reference to the repository for user management.
-- `vehicleClient : VehicleManagementClient`: Reference to the vehicle management client.
+Design Patterns Used: N/A
 
 === UsermanagementApplicationTests
 
-This class contains test cases for the `UsermanagementApplication` class. The annotations `@SpringBootTest` and `@Test` are used for defining Spring Boot tests. No specific design patterns are used in this class.
+The `UsermanagementApplicationTests` class contains test cases for the `UsermanagementApplication` class. It is annotated with `@SpringBootTest` and `@Test` for running Spring Boot tests.
 
-Methods: No specific methods defined.
+Design Patterns Used: N/A
 
 == Runtime View Diagrams
 
 [plantuml, runtime-view]
 ----
 title User Registration Flow
-
 UserManagementController -> UserManagementService: onboardUser(username, password)
-UserManagementService -> IdentityProviderClient: POST /registerUser
-IdentityProviderClient --> UserManagementService: User registration response
-UserManagementService --> UserManagementController: Registration success message
-----
+UserManagementService -> UserManagementRepository: getUserByUsername(username)
+UserManagementRepository --> UserManagementService: MobilityUser
+UserManagementService --> UserManagementController: Success Response
 
-[plantuml, runtime-view]
-----
 title Authentication/Login Flow
-
 UserManagementController -> UserManagementService: onboardUser(username, password)
-UserManagementService -> IdentityProviderClient: POST /authenticateUser
-IdentityProviderClient --> UserManagementService: Authentication response
-UserManagementService --> UserManagementController: Authentication success message
-----
+UserManagementService -> IdentityProviderClient: Authenticate User
+IdentityProviderClient --> UserManagementService: Authentication Response
+UserManagementService --> UserManagementController: Success Response
 
-[plantuml, runtime-view]
-----
 title JWT Token Validation Flow
+IdentityProviderClient -> IdentityProviderService: Validate JWT Token
+IdentityProviderService --> IdentityProviderClient: Validation Result
 
-UserManagementController -> UserManagementService: onboardUser(username, password)
-UserManagementService -> IdentityProviderClient: POST /generateToken
-IdentityProviderClient --> UserManagementService: Token generation response
-UserManagementService --> UserManagementController: Token validation success message
-----
-
-[plantuml, runtime-view]
-----
 title Key Business Process Flows
-
 UserManagementController -> UserManagementService: assignVehicle(username, vin, brand, country)
-UserManagementService -> VehicleManagementClient: GET /findVehicle
-VehicleManagementClient --> UserManagementService: Vehicle details
-UserManagementService -> UserManagementRepository: Save user-vehicle mapping
-UserManagementRepository --> UserManagementService: Save confirmation
-UserManagementService --> UserManagementController: Vehicle assignment success message
-----
+UserManagementService -> VehicleManagementClient: Get Vehicle Details
+VehicleManagementClient --> UserManagementService: Vehicle Details
+UserManagementService -> UserManagementRepository: Save User with Vehicle
+UserManagementRepository --> UserManagementService: Success Response
+UserManagementService --> UserManagementController: Success Response
 
-[plantuml, runtime-view]
-----
 title Exception Handling Flows
-
-UserManagementController -> UserManagementService: assignVehicle(username, vin, brand, country)
-UserManagementService -> VehicleManagementClient: GET /findVehicle
-VehicleManagementClient --> UserManagementService: Vehicle not found exception
-UserManagementService -> ExceptionHandler: Handle VehicleNotFoundException
-ExceptionHandler --> UserManagementService: Exception response
-UserManagementService --> UserManagementController: Exception message
+UserManagementController -> UserManagementService: onboardUser(username, password)
+UserManagementService -> UserManagementRepository: getUserByUsername(username)
+UserManagementRepository --> UserManagementService: Null Response
+UserManagementService --> UserManagementController: Error Response
 ----
 
 == Entity Relationship Diagram
@@ -125,30 +90,33 @@ UserManagementService --> UserManagementController: Exception message
 [plantuml, er-diagram]
 ----
 entity MobilityUser {
-  Long id
-  String mobilityUserId
-  String role
-  String username
-  String vin
+  + Long id
+  + String mobilityUserId
+  + String role
+  + String username
+  + String vin
 }
-
-note right: Represents a user entity\nwith attributes
 ----
 
 == Detailed Component Interactions
 
-The interactions between the components in the application are as follows:
+The User Management module follows a typical Controller-Service-Repository architecture for handling user-related operations.
 
-- UserManagementController interacts with UserManagementService to handle user management operations.
-- UserManagementService interacts with IdentityProviderClient for user registration and authentication.
-- UserManagementService interacts with VehicleManagementClient for vehicle-related operations.
-- UserManagementService interacts with UserManagementRepository for data access.
-- Exception handling is done by ExceptionHandler for handling specific exceptions.
-- Data flows from the controller to the service layer and then to the repository for data manipulation.
-- Transaction boundaries are managed by Spring's transaction management for ensuring data consistency.
+- **Controller-Service Interaction**:
+  - The `UserManagementController` receives HTTP requests and delegates the business logic to the `UserManagementService`.
+  - The `UserManagementService` interacts with external services like `IdentityProviderClient` and `VehicleManagementClient` to fulfill user management operations.
 
-This design ensures a clear separation of concerns with distinct layers for handling different aspects of user and vehicle management operations.
+- **Data Flow Through Layers**:
+  - Data flows from the controller to the service layer for processing and then to the repository for persistence.
+  - External service interactions are handled by the service layer.
 
-== Conclusion
+- **Exception Propagation**:
+  - Exceptions thrown at any layer are caught and handled appropriately.
+  - For example, if a user is not found in the repository, an error response is propagated back to the controller.
 
-This detailed design documentation provides a comprehensive overview of the classes, their interactions, key business flows, entity relationships, and component interactions in the Java Spring Boot application for user and vehicle management. Developers can refer to this document for understanding the detailed implementation design of the application.
+- **Transaction Boundaries**:
+  - Transaction boundaries are managed by the underlying Spring framework, ensuring data consistency during database operations.
+
+This design ensures separation of concerns, modularity, and scalability in the user management module.
+
+This document provides a detailed overview of the design and interactions within the User Management module, aiding developers in understanding the implementation details.

@@ -4,152 +4,154 @@
 
 === EnrollmentApplication
 
-EnrollmentApplication class serves as the entry point for the Spring Boot application. It contains the main method for starting the application.
+Purpose:
+- Main class for the Spring Boot application.
+
+Methods:
+- `public static void main(String[] args)`: Entry point for the application.
 
 Annotations:
-- @EnableFeignClients: Enables Feign clients for making RESTful API calls.
-- @SpringBootApplication: Indicates that this class is the main Spring Boot application class.
+- `@EnableFeignClients`: Enables Feign clients for REST communication.
+- `@SpringBootApplication`: Indicates this class is the main Spring Boot application class.
 
-Design Patterns: This class follows the standard Spring Boot application structure.
+Design Patterns:
+- No specific design patterns used.
 
 === UserManagementClient
 
-UserManagementClient class is a Feign client used for communicating with the User Management service.
+Purpose:
+- Feign client for interacting with the User Management service.
 
 Annotations:
-- @FeignClient: Marks this interface as a Feign client.
-- @GetMapping: Defines a GET mapping for the method.
-- @RequestParam: Binds the value of a query parameter to a method parameter.
+- `@FeignClient`: Marks the interface as a Feign client.
+- `@GetMapping`, `@RequestParam`: Define the HTTP methods and parameters for the client.
 
-Design Patterns: This class follows the Feign client pattern for RESTful communication.
+Design Patterns:
+- No specific design patterns used.
 
 === EnrollmentController
 
-EnrollmentController class is a REST controller that handles enrollment-related HTTP requests.
-
-Annotations:
-- @Autowired: Injects dependencies.
-- @PostMapping: Defines a POST mapping for the method.
-- @RequestMapping: Maps HTTP requests to handler methods.
-- @RequestParam: Binds the value of a query parameter to a method parameter.
-- @RestController: Indicates that this class is a REST controller.
+Purpose:
+- REST controller for handling enrollment-related requests.
 
 Methods:
-- nominatePrimary: Handles the nomination of a primary user.
+- `public String nominatePrimary(@RequestParam String username)`: Handles nomination of a primary user.
+- `public String nominatePrimarygreet()`: Sample method for greeting.
 
-Fields:
-- service: Instance of EnrollmentService used for business logic.
+Annotations:
+- `@Autowired`, `@PostMapping`, `@RequestMapping`, `@RequestParam`, `@RestController`: Annotations for dependency injection and REST mapping.
 
-Design Patterns: This class follows the MVC pattern with Spring MVC.
+Design Patterns:
+- No specific design patterns used.
 
 === UserResponseDTO
 
-UserResponseDTO class represents the response data transfer object for user-related information.
+Purpose:
+- Data Transfer Object (DTO) for user responses.
 
 Annotations:
-- @Getter: Generates getter methods.
-- @Setter: Generates setter methods.
+- `@Getter`, `@Setter`: Lombok annotations for generating getters and setters.
 
-Fields:
-- mobilityUserId: User's mobility ID.
-- username: User's username.
-- vin: Vehicle Identification Number.
-
-Design Patterns: This class follows the Data Transfer Object (DTO) pattern.
+Design Patterns:
+- No specific design patterns used.
 
 === Enrollment
 
-Enrollment class represents an entity for enrollment information.
+Purpose:
+- Entity class representing an enrollment.
 
 Annotations:
-- @Entity: Marks this class as a JPA entity.
-- @GeneratedValue: Specifies the generation strategy for the primary key.
-- @Getter: Generates getter methods.
-- @Id: Marks the field as the primary key.
-- @Setter: Generates setter methods.
+- `@Entity`, `@GeneratedValue`, `@Getter`, `@Id`, `@Setter`: JPA annotations for entity mapping.
 
-Fields:
-- id: Primary key.
-- role: User's role.
-- username: User's username.
-- vin: Vehicle Identification Number.
-
-Design Patterns: This class follows the Entity pattern in JPA.
+Design Patterns:
+- No specific design patterns used.
 
 === EnrollmentRepository
 
-EnrollmentRepository class is a Spring Data repository interface for managing Enrollment entities.
+Purpose:
+- Repository interface for Enrollment entities.
 
-Design Patterns: This class follows the Repository pattern for data access.
+Design Patterns:
+- No specific design patterns used.
 
 === EnrollmentService
 
-EnrollmentService class contains business logic related to enrollment operations.
-
-Annotations:
-- @Autowired: Injects dependencies.
-- @Service: Indicates that this class is a service component.
+Purpose:
+- Service class for business logic related to enrollments.
 
 Methods:
-- nominatePrimaryUser: Business logic for nominating a primary user.
+- `public String nominatePrimaryUser(String username)`: Business logic for nominating a primary user.
 
-Fields:
-- repo: Instance of EnrollmentRepository for data access.
-- userClient: Instance of UserManagementClient for external service communication.
+Annotations:
+- `@Autowired`, `@Service`: Annotations for dependency injection and service definition.
 
-Design Patterns: This class follows the Service pattern for business logic.
+Design Patterns:
+- No specific design patterns used.
 
 === EnrollmentApplicationTests
 
-EnrollmentApplicationTests class contains test cases for the EnrollmentApplication class.
+Purpose:
+- Test class for EnrollmentApplication.
 
 Annotations:
-- @SpringBootTest: Indicates that this class is a Spring Boot test.
-- @Test: Marks a method as a test method.
+- `@SpringBootTest`, `@Test`: Annotations for Spring Boot testing.
 
-Design Patterns: This class follows the standard JUnit testing pattern.
+Design Patterns:
+- No specific design patterns used.
 
 == Runtime View Diagrams
 
-[plantuml, runtime-sequence]
+[plantuml, runtime-view]
 ----
 title User Registration Flow
-
-EnrollmentController -> EnrollmentService: nominatePrimaryUser(username)
-EnrollmentService -> UserManagementClient: GET userByUsername(username)
-UserManagementClient --> EnrollmentService: UserResponseDTO
-EnrollmentService --> EnrollmentController: Success Response
+participant UserManagementClient
+participant EnrollmentController
+UserManagementClient -> EnrollmentController: nominatePrimary
+EnrollmentController -> EnrollmentService: nominatePrimaryUser
+EnrollmentService -> EnrollmentRepository: Data Access
+EnrollmentRepository --> EnrollmentService: Entity
+EnrollmentService --> EnrollmentController: Response
+EnrollmentController --> UserManagementClient: Response
 ----
 
-[plantuml, runtime-sequence]
+[plantuml, runtime-view]
 ----
 title Authentication/Login Flow
-
-EnrollmentController -> EnrollmentService: authenticateUser(username, password)
-EnrollmentService -> UserManagementClient: POST authenticateUser(username, password)
-UserManagementClient --> EnrollmentService: UserResponseDTO
-EnrollmentService --> EnrollmentController: JWT Token
+participant EnrollmentController
+EnrollmentController -> EnrollmentService: authenticateUser
+EnrollmentService -> EnrollmentRepository: Data Access
+EnrollmentRepository --> EnrollmentService: User Entity
+EnrollmentService --> EnrollmentController: Response
 ----
 
-[plantuml, runtime-sequence]
+[plantuml, runtime-view]
 ----
 title JWT Token Validation Flow
-
-EnrollmentController -> EnrollmentService: validateToken(token)
-EnrollmentService -> UserManagementClient: GET validateToken(token)
-UserManagementClient --> EnrollmentService: UserResponseDTO
-EnrollmentService --> EnrollmentController: Validation Result
+participant EnrollmentController
+EnrollmentController -> EnrollmentService: validateToken
+EnrollmentService -> EnrollmentRepository: Data Access
+EnrollmentRepository --> EnrollmentService: User Entity
+EnrollmentService --> EnrollmentController: Response
 ----
 
-[plantuml, runtime-sequence]
+[plantuml, runtime-view]
+----
+title Key Business Process Flow
+participant EnrollmentController
+EnrollmentController -> EnrollmentService: processEnrollment
+EnrollmentService -> EnrollmentRepository: Data Access
+EnrollmentRepository --> EnrollmentService: Enrollment Entity
+EnrollmentService --> EnrollmentController: Response
+----
+
+[plantuml, runtime-view]
 ----
 title Exception Handling Flow
-
-EnrollmentController -> EnrollmentService: processRequest(request)
-EnrollmentService -> EnrollmentRepository: fetchData()
-EnrollmentRepository --> EnrollmentService: Data
-EnrollmentService -> ExceptionHandler: handleException()
-ExceptionHandler --> EnrollmentController: Error Response
+participant EnrollmentController
+EnrollmentController -> EnrollmentService: handleException
+EnrollmentService -> EnrollmentRepository: Data Access
+EnrollmentRepository --> EnrollmentService: Error Handling
+EnrollmentService --> EnrollmentController: Error Response
 ----
 
 == Entity Relationship Diagram
@@ -158,10 +160,9 @@ ExceptionHandler --> EnrollmentController: Error Response
 ----
 entity Enrollment {
   + id : Long
-  --
-  role : String
-  username : String
-  vin : String
+  + role : String
+  + username : String
+  + vin : String
 }
 
 entity UserResponseDTO {
@@ -175,11 +176,9 @@ Enrollment ||--o UserResponseDTO
 
 == Detailed Component Interactions
 
-EnrollmentController -> EnrollmentService: Delegate enrollment operations
-EnrollmentService -> EnrollmentRepository: Perform data access
-EnrollmentService -> UserManagementClient: Communicate with User Management service
-EnrollmentRepository -> Database: CRUD operations
-Exception handling propagated through layers
-Transaction boundaries managed by Spring framework
+- Controller-Service-Repository interactions: Controllers interact with services, which in turn interact with repositories for data access.
+- Data flow through layers: Data flows from controllers to services and then to repositories for CRUD operations.
+- Exception propagation: Exceptions are handled at different layers and propagated back to the caller.
+- Transaction boundaries: Transactions are managed at the service layer for ensuring data consistency.
 
-This detailed design documentation provides insights into the class structure, runtime flows, entity relationships, and component interactions of the Java Spring Boot application. Developers can refer to this document for a comprehensive understanding of the implementation design.
+This detailed design document provides insights into the class structure, runtime flows, entity relationships, and component interactions of the Java Spring Boot application. Developers can refer to this document for a comprehensive understanding of the implementation design.
