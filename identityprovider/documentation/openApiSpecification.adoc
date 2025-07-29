@@ -2,19 +2,19 @@
 
 == Introduction
 
-The Identity Provider API provides a set of RESTful services for user authentication and management. This API allows clients to register users, log in, and access user greetings. It is designed for applications requiring user authentication and token management.
+The Identity Provider API offers a set of endpoints for user authentication and management. This API allows clients to register new users, login existing users, and greet users. It is designed to be simple and straightforward for integration into various client applications.
 
 === Authentication Requirements
 
-The API uses JWT (JSON Web Tokens) for securing endpoints. Clients must authenticate by providing a valid JWT in the `Authorization` header of their HTTP requests.
+Most endpoints require JWT-based authentication. Clients must authenticate by providing a valid JWT token in the `Authorization` header of their requests.
 
 === Base URL and Versioning
 
-The base URL for all API endpoints is `https://api.example.com/v1`. This API is currently at version 1.
+The base URL for all API endpoints is `https://api.example.com/v1`. This documentation refers to version 1 of the API.
 
 === How to Use This Specification
 
-This document is formatted according to the OpenAPI 3.0 specification. It can be imported into tools like Swagger UI, Postman, or Insomnia for interactive exploration and testing of the API endpoints.
+This document is structured according to the OpenAPI 3.0 specification. It can be imported into tools like Swagger UI, Postman, or Insomnia for interactive exploration and testing of the API endpoints.
 
 == OpenAPI 3.0 YAML Specification
 
@@ -24,9 +24,11 @@ openapi: 3.0.0
 info:
   title: Identity Provider API
   version: 1.0.0
-  description: API for user authentication and management.
+  description: API for managing user authentication and registration.
 servers:
   - url: https://api.example.com/v1
+    description: Production server
+
 paths:
   /login:
     post:
@@ -35,6 +37,7 @@ paths:
       tags:
         - User
       requestBody:
+        description: User login credentials
         required: true
         content:
           application/json:
@@ -48,24 +51,11 @@ paths:
               schema:
                 $ref: '#/components/schemas/AuthResponse'
         '401':
-          description: Unauthorized
+          description: Authentication failed
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-  /greet:
-    get:
-      summary: Returns a greeting
-      operationId: greetUser
-      tags:
-        - User
-      responses:
-        '200':
-          description: Successful greeting
-          content:
-            text/plain:
-              schema:
-                type: string
   /register:
     post:
       summary: Registers a new user
@@ -73,6 +63,7 @@ paths:
       tags:
         - User
       requestBody:
+        description: User registration data
         required: true
         content:
           application/json:
@@ -80,17 +71,31 @@ paths:
               $ref: '#/components/schemas/Users'
       responses:
         '201':
-          description: User registered
+          description: User registered successfully
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Users'
         '400':
-          description: Bad request
+          description: Invalid input data
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /greet:
+    get:
+      summary: Greets the user
+      operationId: greetUser
+      tags:
+        - User
+      responses:
+        '200':
+          description: Greeting message returned
+          content:
+            text/plain:
+              schema:
+                type: string
+
 components:
   schemas:
     AuthRequest:
@@ -120,8 +125,12 @@ components:
       properties:
         message:
           type: string
+        code:
+          type: integer
+
 security:
   - bearerAuth: []
+
 securitySchemes:
   bearerAuth:
     type: http
@@ -137,13 +146,13 @@ securitySchemes:
 
 Endpoint: `POST /login`
 
-Description: Authenticates a user and returns a JWT.
+Description: Authenticates a user and returns a JWT token.
 
 Request:
 [source,json]
 ----
 {
-  "username": "user1",
+  "username": "user@example.com",
   "password": "password123"
 }
 ----
@@ -156,19 +165,7 @@ Response:
 }
 ----
 
-==== Greet
-
-Endpoint: `GET /greet`
-
-Description: Returns a simple greeting message.
-
-Response:
-[source]
-----
-Hello, user!
-----
-
-==== Register User
+==== Register
 
 Endpoint: `POST /register`
 
@@ -178,7 +175,7 @@ Request:
 [source,json]
 ----
 {
-  "username": "newuser",
+  "username": "newuser@example.com",
   "password": "newpassword123"
 }
 ----
@@ -187,20 +184,32 @@ Response:
 [source,json]
 ----
 {
-  "userId": 101,
-  "username": "newuser"
+  "userId": 1,
+  "username": "newuser@example.com"
 }
+----
+
+==== Greet
+
+Endpoint: `GET /greet`
+
+Description: Returns a greeting message.
+
+Response:
+[source,text]
+----
+Hello, welcome to our service!
 ----
 
 === Authentication Flows
 
-Authentication is performed via JWT. Users must first authenticate through the `/login` endpoint to receive a token. This token must be included in the `Authorization` header as `Bearer <token>` for subsequent requests to secured endpoints.
+JWT tokens must be included in the `Authorization` header as `Bearer <token>`. These tokens are obtained through the login endpoint.
 
-=== Common Error Codes
+=== Common Error Codes and Their Meanings
 
-- `401 Unauthorized`: The request lacks valid authentication credentials.
-- `400 Bad Request`: The request is malformed or missing required parameters.
+- `401 Unauthorized`: Authentication failed due to invalid credentials or token.
+- `400 Bad Request`: The request was malformed or missing required fields.
 
 === Rate Limiting Information
 
-Currently, there is no rate limiting enforced on the API endpoints. However, this may be subject to change as the API evolves.
+Currently, there is no rate limiting enforced on the API endpoints. However, future versions may include rate limiting policies to ensure fair usage.

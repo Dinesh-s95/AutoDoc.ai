@@ -1,0 +1,187 @@
+= Vehicle Management API Documentation
+
+== Introduction
+
+Welcome to the Vehicle Management API. This API allows users to register vehicles and verify vehicle registration details. The API is designed to be simple and efficient, providing direct access to vehicle data management.
+
+=== Authentication Requirements
+
+Currently, this API does not require authentication. This may change in future versions as features expand.
+
+=== Base URL and Versioning
+
+The base URL for all API endpoints is `https://api.example.com/v1`. All requests should be made to this base URL. This documentation refers to version 1 of the API.
+
+=== How to Use This Specification
+
+This document is structured to provide all necessary details to interact with the API's endpoints, including method descriptions, request/response schemas, and examples. The OpenAPI 3.0 specification section can be imported into tools like Swagger UI, Postman, or Insomnia for testing and interaction.
+
+== OpenAPI 3.0 YAML Specification
+
+[source,yaml]
+----
+openapi: 3.0.0
+info:
+  title: Vehicle Management API
+  version: 1.0.0
+  description: API for managing vehicle registrations
+servers:
+  - url: https://api.example.com/v1
+paths:
+  /vehicles/register:
+    post:
+      summary: Register a new vehicle
+      operationId: registerVehicle
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Vehicle'
+      responses:
+        '201':
+          description: Vehicle registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vehicle'
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+  /vehicles/verify:
+    get:
+      summary: Verify vehicle registration
+      operationId: verifyRegistration
+      parameters:
+        - name: vin
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: brand
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: country
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Verification successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Vehicle'
+        '404':
+          description: Vehicle not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  schemas:
+    Vehicle:
+      type: object
+      properties:
+        vin:
+          type: string
+        brand:
+          type: string
+        model:
+          type: string
+        device:
+          type: string
+        country:
+          type: string
+        sop:
+          type: string
+          format: date
+      required:
+        - vin
+        - brand
+        - model
+        - country
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+        code:
+          type: integer
+----
+
+== API Documentation
+
+=== Endpoint Descriptions and Usage Examples
+
+==== Register Vehicle
+
+Endpoint to register a new vehicle. The request must include vehicle details such as VIN, brand, model, and country.
+
+Example Request:
+[source,json]
+----
+POST /vehicles/register
+{
+  "vin": "1HGCM82633A004352",
+  "brand": "Honda",
+  "model": "Civic",
+  "device": "OBD2",
+  "country": "USA",
+  "sop": "2023-01-01"
+}
+----
+
+Example Response:
+[source,json]
+----
+HTTP/1.1 201 Created
+{
+  "vin": "1HGCM82633A004352",
+  "brand": "Honda",
+  "model": "Civic",
+  "device": "OBD2",
+  "country": "USA",
+  "sop": "2023-01-01"
+}
+----
+
+==== Verify Registration
+
+Endpoint to verify vehicle registration details. Requires VIN, brand, and country as query parameters.
+
+Example Request:
+[source,json]
+----
+GET /vehicles/verify?vin=1HGCM82633A004352&brand=Honda&country=USA
+----
+
+Example Response:
+[source,json]
+----
+HTTP/1.1 200 OK
+{
+  "vin": "1HGCM82633A004352",
+  "brand": "Honda",
+  "model": "Civic",
+  "device": "OBD2",
+  "country": "USA",
+  "sop": "2023-01-01"
+}
+----
+
+=== Common Error Codes and Their Meanings
+
+- `400 Bad Request`: The request was unacceptable, often due to missing a required parameter.
+- `404 Not Found`: The requested resource does not exist.
+- `500 Internal Server Error`: An error occurred on the server side.
+
+=== Rate Limiting Information
+
+Currently, there is no rate limiting in place for this API. This may be introduced in future versions to ensure fair usage.

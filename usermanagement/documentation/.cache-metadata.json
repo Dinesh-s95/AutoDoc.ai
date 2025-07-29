@@ -1,0 +1,15 @@
+{
+  "sourceHash": "990c1a5b75558c371735ed1c3b40f5af208d01942defd7afb0b78f5d256b2215",
+  "lastUpdated": "2025-07-29T02:58:41.078Z",
+  "sourceFiles": [
+    "../usermanagement/src/main/java/com/vm/usermanagement/UsermanagementApplication.java",
+    "../usermanagement/src/main/java/com/vm/usermanagement/client/IdentityProviderClient.java",
+    "../usermanagement/src/main/java/com/vm/usermanagement/client/VehicleManagementClient.java",
+    "../usermanagement/src/main/java/com/vm/usermanagement/controller/UserManagementController.java",
+    "../usermanagement/src/main/java/com/vm/usermanagement/entity/MobilityUser.java",
+    "../usermanagement/src/main/java/com/vm/usermanagement/repository/UserManagementRepository.java",
+    "../usermanagement/src/main/java/com/vm/usermanagement/service/UserManagementService.java",
+    "../usermanagement/src/test/java/com/vm/usermanagement/UsermanagementApplicationTests.java"
+  ],
+  "classCount": 8
+}

@@ -1,0 +1,125 @@
+[
+  {
+    "className": "UsermanagementApplication",
+    "annotations": [
+      "EnableFeignClients",
+      "SpringBootApplication"
+    ],
+    "methods": [
+      "public static void main(String[] args)"
+    ],
+    "endpoints": [],
+    "fields": [],
+    "isEntity": false,
+    "isRestController": false
+  },
+  {
+    "className": "IdentityProviderClient",
+    "annotations": [
+      "FeignClient",
+      "PostMapping",
+      "RequestBody"
+    ],
+    "methods": [],
+    "endpoints": [],
+    "fields": [],
+    "isEntity": false,
+    "isRestController": false
+  },
+  {
+    "className": "VehicleManagementClient",
+    "annotations": [
+      "FeignClient",
+      "GetMapping",
+      "RequestParam"
+    ],
+    "methods": [],
+    "endpoints": [],
+    "fields": [],
+    "isEntity": false,
+    "isRestController": false
+  },
+  {
+    "className": "UserManagementController",
+    "annotations": [
+      "Autowired",
+      "PostMapping",
+      "RequestMapping",
+      "RequestParam",
+      "RestController"
+    ],
+    "methods": [
+      "public String assignVehicle(@RequestParam String username, @RequestParam String vin, @RequestParam String brand, @RequestParam String country)",
+      "public String onboardUser(@RequestParam String username, @RequestParam String password)"
+    ],
+    "endpoints": [],
+    "fields": [
+      "service : UserManagementService"
+    ],
+    "isEntity": false,
+    "isRestController": true
+  },
+  {
+    "className": "MobilityUser",
+    "annotations": [
+      "Entity",
+      "GeneratedValue",
+      "Getter",
+      "Id",
+      "Setter",
+      "Table"
+    ],
+    "methods": [],
+    "endpoints": [],
+    "fields": [
+      "id : Long",
+      "mobilityUserId : String",
+      "role : String",
+      "username : String",
+      "vin : String"
+    ],
+    "isEntity": true,
+    "isRestController": false
+  },
+  {
+    "className": "UserManagementRepository",
+    "annotations": [],
+    "methods": [],
+    "endpoints": [],
+    "fields": [],
+    "isEntity": false,
+    "isRestController": false
+  },
+  {
+    "className": "UserManagementService",
+    "annotations": [
+      "Autowired",
+      "Service"
+    ],
+    "methods": [
+      "public Optional<MobilityUser> getUserByUsername(String username)",
+      "public String onboardUser(String username, String password)",
+      "public void assignVehicleToUser(String username, String vin, String brand, String country)"
+    ],
+    "endpoints": [],
+    "fields": [
+      "identityProvider : IdentityProviderClient",
+      "repo : UserManagementRepository",
+      "vehicleClient : VehicleManagementClient"
+    ],
+    "isEntity": false,
+    "isRestController": false
+  },
+  {
+    "className": "UsermanagementApplicationTests",
+    "annotations": [
+      "SpringBootTest",
+      "Test"
+    ],
+    "methods": [],
+    "endpoints": [],
+    "fields": [],
+    "isEntity": false,
+    "isRestController": false
+  }
+]

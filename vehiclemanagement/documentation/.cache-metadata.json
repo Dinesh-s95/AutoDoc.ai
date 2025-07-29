@@ -1,0 +1,12 @@
+{
+  "sourceHash": "c1ac2758280aea2f600b65e31d803136a5d41b6a040ae4abb27b1648875e35a7",
+  "lastUpdated": "2025-07-29T02:59:49.263Z",
+  "sourceFiles": [
+    "../vehiclemanagement/src/main/java/com/vm/vehiclemanagement/Entity/Vehicle.java",
+    "../vehiclemanagement/src/main/java/com/vm/vehiclemanagement/VehiclemanagementApplication.java",
+    "../vehiclemanagement/src/main/java/com/vm/vehiclemanagement/controller/VehicleController.java",
+    "../vehiclemanagement/src/main/java/com/vm/vehiclemanagement/repository/VehicleRepository.java",
+    "../vehiclemanagement/src/test/java/com/vm/vehiclemanagement/VehiclemanagementApplicationTests.java"
+  ],
+  "classCount": 5
+}

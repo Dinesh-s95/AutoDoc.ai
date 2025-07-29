@@ -1,0 +1,159 @@
+= Vehicle Management System Detailed Design Documentation
+
+== Introduction
+
+This document provides a comprehensive detailed design of the Vehicle Management System developed using Java with Spring Boot. It includes class-by-class analysis, runtime view diagrams, entity relationship diagrams, and detailed component interactions.
+
+== Class-by-Class Analysis
+
+=== Vehicle
+
+The `Vehicle` class is an entity model representing a vehicle in the system. It is annotated with JPA annotations to map it to a database table.
+
+- *Annotations*:
+  - `@Entity`: Specifies that the class is an entity.
+  - `@Table`: Specifies the table in the database with which this entity is mapped.
+  - `@Id`: Marks the `vin` field as the primary key.
+  - `@NotBlank`: Ensures fields are not blank.
+  - `@NotNull`: Ensures fields are not null.
+
+- *Fields*:
+  - `brand: String`
+  - `country: String`
+  - `device: String`
+  - `model: String`
+  - `sop: LocalDate` (Start of Production)
+  - `vin: String` (Vehicle Identification Number)
+
+- *Methods*:
+  - Getters and setters for all fields.
+
+=== VehiclemanagementApplication
+
+The main class that starts the Spring Boot application.
+
+- *Annotations*:
+  - `@SpringBootApplication`: Marks this application as a Spring Boot application.
+
+- *Methods*:
+  - `public static void main(String[] args)`: The entry point of the application.
+
+=== VehicleController
+
+This class is responsible for handling incoming HTTP requests related to vehicle management.
+
+- *Annotations*:
+  - `@RestController`: Marks this class as a controller where every method returns a domain object instead of a view.
+  - `@RequestMapping`: Maps HTTP requests to handler methods.
+  - `@Autowired`: Marks the automatic dependency injection.
+
+- *Methods*:
+  - `registerVehicle(@RequestBody @Validated Vehicle vehicle)`: Registers a new vehicle.
+  - `verifyRegistration(@RequestParam final String vin, final String brand, final String country)`: Verifies the registration details of a vehicle.
+
+=== VehicleRepository
+
+Interface for data access operations on the `Vehicle` entity.
+
+- *Annotations*:
+  - `@Repository`: Indicates that the class provides the mechanism for storage, retrieval, update, delete and search operation on objects.
+
+=== VehiclemanagementApplicationTests
+
+Class for testing the application.
+
+- *Annotations*:
+  - `@SpringBootTest`: Provides Spring Boot test features.
+  - `@Test`: Marks methods as test methods.
+
+== Runtime View Diagrams
+
+=== User Registration Flow
+
+[plantuml, user-registration-flow, png]
+----
+@startuml
+actor User
+entity VehicleController
+database VehicleRepository
+
+User -> VehicleController : registerVehicle(vehicle)
+VehicleController -> VehicleRepository : save(vehicle)
+VehicleRepository --> VehicleController : vehicleSaved
+VehicleController --> User : registrationSuccessful
+@enduml
+----
+
+=== Authentication/Login Flow
+
+[plantuml, authentication-flow, png]
+----
+@startuml
+actor User
+entity AuthController
+database UserRepository
+
+User -> AuthController : login(credentials)
+AuthController -> UserRepository : findUser(username, password)
+UserRepository --> AuthController : userFound
+AuthController --> User : generateToken(userDetails)
+@enduml
+----
+
+=== JWT Token Validation Flow
+
+[plantuml, jwt-validation-flow, png]
+----
+@startuml
+actor User
+entity AuthController
+database TokenRepository
+
+User -> AuthController : request(resource)
+AuthController -> TokenRepository : validateToken(token)
+TokenRepository --> AuthController : tokenValid
+AuthController --> User : grantAccess
+@enduml
+----
+
+== Entity Relationship Diagram
+
+[plantuml, entity-relationship-diagram, png]
+----
+@startuml
+entity "Vehicle" {
+  * vin : string
+  --
+  * brand : string
+  * country : string
+  * device : string
+  * model : string
+  * sop : LocalDate
+}
+@enduml
+----
+
+== Detailed Component Interactions
+
+=== Controller-Service-Repository Interactions
+
+- `VehicleController` receives HTTP requests and delegates to `VehicleRepository` for data persistence.
+- `VehicleRepository` interacts with the database and returns results back to `VehicleController`.
+- `VehicleController` processes the data and sends HTTP responses.
+
+=== Data Flow Through Layers
+
+- Data flows from the Controllers to Repositories and possibly to external services or databases.
+- Data is returned back to the user after being processed.
+
+=== Exception Propagation
+
+- Exceptions are caught in the Controllers and appropriate HTTP responses are generated.
+
+=== Transaction Boundaries
+
+- Transactions are typically started at the service layer (not shown here), ensuring that database operations are completed successfully before committing the transaction.
+
+== Conclusion
+
+This document provides a detailed design of the Vehicle Management System, covering class responsibilities, interactions, and data flows. It serves as a guide for developers to understand and implement the system correctly.

@@ -1,0 +1,15 @@
+{
+  "sourceHash": "bd21167a89f457f008eaa6748eb38837dc65cd20aab025a7e52154c2cc221ff1",
+  "lastUpdated": "2025-07-29T02:57:31.841Z",
+  "sourceFiles": [
+    "../enrollment/src/main/java/com/vm/enrollment/EnrollmentApplication.java",
+    "../enrollment/src/main/java/com/vm/enrollment/client/UserManagementClient.java",
+    "../enrollment/src/main/java/com/vm/enrollment/controller/EnrollmentController.java",
+    "../enrollment/src/main/java/com/vm/enrollment/dto/UserResponseDTO.java",
+    "../enrollment/src/main/java/com/vm/enrollment/entity/Enrollment.java",
+    "../enrollment/src/main/java/com/vm/enrollment/repository/EnrollmentRepository.java",
+    "../enrollment/src/main/java/com/vm/enrollment/service/EnrollmentService.java",
+    "../enrollment/src/test/java/com/vm/enrollment/EnrollmentApplicationTests.java"
+  ],
+  "classCount": 8
+}

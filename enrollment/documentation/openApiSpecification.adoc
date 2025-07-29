@@ -1,0 +1,105 @@
+= Enrollment API Documentation
+
+== Introduction
+
+The Enrollment API provides a simple interface for managing user enrollments in a system. This API allows clients to nominate a primary user for an account. The API is designed for easy integration and robust service.
+
+=== Authentication Requirements
+
+Currently, the API does not require authentication. However, for production environments, it is recommended to implement an OAuth2.0 or JWT-based authentication mechanism.
+
+=== Base URL and Versioning
+
+The base URL for the API is `https://api.example.com/v1`. All endpoints described below are relative to this base URL. The API is versioned, and the current version is 1.
+
+=== How to Use This Specification
+
+This document is structured to provide all necessary details to interact with the API effectively. Use the YAML specification provided to import into tools like Swagger UI, Postman, or Insomnia for testing and integration purposes.
+
+== OpenAPI 3.0 YAML Specification
+
+[source,yaml]
+----
+openapi: 3.0.0
+info:
+  title: Enrollment API
+  version: 1.0.0
+  description: API for managing user enrollments
+servers:
+  - url: https://api.example.com/v1
+    description: Production server
+paths:
+  /nominatePrimary:
+    post:
+      summary: Nominate a primary user
+      operationId: nominatePrimary
+      parameters:
+        - name: username
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Username of the user to be nominated as primary
+      responses:
+        '200':
+          description: Successfully nominated the primary user
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "User nominated as primary successfully."
+        '400':
+          description: Bad request when the username parameter is missing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+components:
+  schemas:
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+          example: "Invalid request parameters"
+----
+
+== API Documentation
+
+=== Endpoint: POST /nominatePrimary
+
+==== Description
+
+This endpoint nominates a user as the primary user for an account. The client must provide the username of the user to be nominated.
+
+==== Usage Example
+
+Request:
+[source,http]
+----
+POST /v1/nominatePrimary?username=johndoe HTTP/1.1
+Host: api.example.com
+----
+
+Response:
+[source,http]
+----
+HTTP/1.1 200 OK
+Content-Type: text/plain
+
+User nominated as primary successfully.
+----
+
+==== Authentication Flows
+
+No authentication is required to access this endpoint.
+
+==== Common Error Codes and Their Meanings
+
+- `400 Bad Request`: This status is returned when the required `username` parameter is missing in the request.
+
+== Rate Limiting Information
+
+There is no rate limiting enforced on this API at the current version. However, clients are encouraged to implement sensible calling patterns to avoid potential abuse.
+
+This document and the accompanying YAML are designed to be comprehensive and ready for immediate use in production environments, assuming appropriate authentication mechanisms are implemented.

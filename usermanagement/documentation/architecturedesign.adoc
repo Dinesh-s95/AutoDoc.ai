@@ -1,0 +1,145 @@
+= User Management System Architecture Design Document
+
+:toc:
+:toc-placement: auto
+:sectnums:
+:icons: font
+:source-highlighter: rouge
+
+== 1. Service Architecture Overview
+
+=== 1.1 High-level System Architecture Diagram
+
+The following diagram illustrates the high-level architecture of the User Management System, highlighting the main components and their interactions.
+
+[plantuml, "high_level_architecture", png]
+----
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+LAYOUT_WITH_LEGEND()
+
+Person(user, "User", "A user of the system, interacts through a web interface.")
+Container(springApp, "UsermanagementApplication", "Spring Boot", "Handles all user management related processes.")
+ContainerDb(database, "User Database", "MySQL", "Stores user credentials and vehicle assignments.")
+Container(identityProvider, "Identity Provider", "External Service", "Manages user authentication and authorization.")
+Container(vehicleService, "Vehicle Management Service", "External Service", "Manages vehicle data and assignments.")
+
+Rel(user, springApp, "Uses", "HTTPS")
+Rel(springApp, database, "Reads/Writes", "JDBC")
+Rel(springApp, identityProvider, "Validates user credentials", "HTTPS")
+Rel(springApp, vehicleService, "Fetches vehicle data", "HTTPS")
+
+SHOW_LEGEND()
+@enduml
+----
+
+=== 1.2 External System Connections and Integrations
+
+The User Management System integrates with the following external systems:
+
+- **Identity Provider:** Manages authentication and authorization of users.
+- **Vehicle Management Service:** Provides information about vehicles and handles vehicle assignments.
+
+=== 1.3 Component Interaction Overview
+
+The system is structured around the Spring Boot application, which interacts with both internal components such as the database and external services like the Identity Provider and Vehicle Management Service.
+
+=== 1.4 Technology Stack and Frameworks Used
+
+- **Spring Boot:** Framework for creating stand-alone, production-grade Spring based applications.
+- **MySQL:** Database for storing user and vehicle data.
+- **Feign:** A declarative web service client for making HTTP requests to external services.
+
+== 2. Component Description
+
+=== 2.1 UsermanagementApplication
+
+This is the entry point of the Spring Boot application. It is responsible for bootstrapping and configuring the application.
+
+*Responsibilities:*
+- Initialize the Spring Boot application.
+- Configure application-wide settings.
+
+=== 2.2 IdentityProviderClient
+
+A Feign client that communicates with the external Identity Provider.
+
+*Responsibilities:*
+- Authenticate user credentials.
+- Manage user sessions and tokens.
+
+=== 2.3 VehicleManagementClient
+
+A Feign client that interacts with the Vehicle Management Service.
+
+*Responsibilities:*
+- Retrieve vehicle data.
+- Assign vehicles to users.
+
+=== 2.4 UserManagementController
+
+A REST controller that handles HTTP requests related to user management.
+
+*Responsibilities:*
+- Onboard new users.
+- Assign vehicles to users.
+
+=== 2.5 MobilityUser
+
+An entity representing a user within the system.
+
+*Responsibilities:*
+- Store user-specific information such as username, assigned vehicle, etc.
+
+=== 2.6 UserManagementRepository
+
+Handles data persistence for user entities.
+
+*Responsibilities:*
+- Perform CRUD operations on the user data.
+
+=== 2.7 UserManagementService
+
+Service layer that contains business logic.
+
+*Responsibilities:*
+- Interact with the IdentityProviderClient and VehicleManagementClient.
+- Manage user data through UserManagementRepository.
+
+== 3. Infrastructure Architecture
+
+=== 3.1 Deployment Architecture
+
+The application is containerized using Docker and deployed on a Kubernetes cluster to ensure scalability and high availability.
+
+=== 3.2 Database Architecture
+
+The system uses MySQL as its primary data store, structured to handle user data and vehicle assignments efficiently.
+
+=== 3.3 Security Architecture
+
+Security is enforced through HTTPS for all external communications and JWT for user authentication and authorization.
+
+=== 3.4 Network Architecture
+
+The application is deployed within a VPC with strict firewall rules to ensure that only authorized services can communicate with each other.
+
+== 4. System Context
+
+=== 4.1 External Systems and Their Interfaces
+
+- **Identity Provider:** Provides RESTful APIs for authentication and authorization.
+- **Vehicle Management Service:** Offers RESTful APIs for vehicle data retrieval and management.
+
+=== 4.2 Data Flow Between Systems
+
+Data flows securely between the User Management System, the Identity Provider, and the Vehicle Management Service using HTTPS.
+
+=== 4.3 Authentication and Authorization Flows at System Level
+
+Authentication is handled by the Identity Provider using OAuth2.0. The User Management System validates tokens and permissions for each request.
+
+== Conclusion
+
+This document provides a comprehensive overview of the architecture of the User Management System. It is designed to be scalable, secure, and efficient, leveraging modern technologies and best practices.

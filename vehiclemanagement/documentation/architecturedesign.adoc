@@ -1,0 +1,146 @@
+= Vehicle Management System Architecture Design
+
+== 1. Service Architecture Overview
+
+=== High-level System Architecture Diagram
+
+[plantuml, diagram-architecture, png]
+----
+@startuml
+skinparam componentStyle uml2
+
+package "Vehicle Management System" {
+  [Vehicle Controller] - [Vehicle Service]
+  [Vehicle Service] - [Vehicle Repository]
+  [Vehicle Repository] --> [Database]
+}
+
+node "External Systems" {
+  [Vehicle Registration Authority]
+}
+
+[Vehicle Controller] --> [Vehicle Registration Authority] : verifyRegistration
+[Vehicle Registration Authority] --> [Vehicle Controller] : registrationStatus
+
+cloud {
+  [Cloud Database] #Cloud
+}
+
+[Database] ..> [Cloud Database] : sync
+
+@enduml
+----
+
+=== External System Connections and Integrations
+
+The Vehicle Management System integrates with the following external systems:
+- **Vehicle Registration Authority**: Interacts with this authority to verify vehicle registrations and update vehicle status.
+
+=== Component Interaction Overview
+
+1. **Vehicle Controller**: Handles HTTP requests, interacts with Vehicle Service for business operations.
+2. **Vehicle Service**: Provides business logic and transaction management.
+3. **Vehicle Repository**: Manages data persistence and retrieval from the database.
+4. **Database**: Stores vehicle data and is periodically synced with a cloud database for backup and disaster recovery.
+
+=== Technology Stack and Frameworks Used
+
+- **Spring Boot**: Framework for creating stand-alone, production-grade Spring based applications.
+- **Spring Data JPA**: Provides repository support for JPA data access.
+- **MySQL**: Primary relational database.
+- **Docker**: Containerization of the application for easy deployment.
+- **JUnit**: Used for unit testing in the Spring Boot environment.
+
+== 2. Component Description
+
+=== Vehicle Controller
+
+*Responsibility*: Handles all incoming HTTP requests related to vehicle management, such as registering a new vehicle and verifying vehicle registration.
+
+*Role*: Acts as the presentation layer, delegating business operations to the Vehicle Service.
+
+*Interaction*: Communicates directly with Vehicle Service and indirectly with the Vehicle Repository through the service layer.
+
+*External Dependencies*: Interacts with external Vehicle Registration Authority for registration verification.
+
+=== Vehicle Service
+
+*Responsibility*: Contains business logic and transaction management related to vehicle operations.
+
+*Role*: Service layer that acts as a mediator between the controller and repository.
+
+*Interaction*: Receives commands from Vehicle Controller and operates on data via Vehicle Repository.
+
+=== Vehicle Repository
+
+*Responsibility*: Manages the persistence of Vehicle entities.
+
+*Role*: Data Access Object that provides CRUD operations on the vehicle database.
+
+*Interaction*: Is interacted with by the Vehicle Service for all data retrieval and update operations.
+
+=== Database
+
+*Responsibility*: Stores all vehicle-related data securely.
+
+*Role*: Persistent storage mechanism.
+
+*Interaction*: Directly interacted with by Vehicle Repository using Spring Data JPA.
+
+== 3. Infrastructure Architecture
+
+=== Deployment Architecture
+
+[plantuml, diagram-deployment, png]
+----
+@startuml
+skinparam componentStyle uml2
+
+package "Docker Container" {
+  [Vehicle Management Application] #HoneyDew
+}
+
+node "Cloud Environment" {
+  [Load Balancer] #LightBlue
+  [Application Server] #LightBlue
+  [Database Server] #LightBlue
+}
+
+[Vehicle Management Application] ..> [Load Balancer] : deploy
+[Load Balancer] --> [Application Server]
+[Application Server] --> [Database Server]
+
+@enduml
+----
+
+=== Database Architecture
+
+*Primary Database*: MySQL running within a Docker container.
+*Backup and Recovery*: Syncs data with a Cloud Database for redundancy and disaster recovery.
+
+=== Security Architecture
+
+*Authentication*: Integrates with OAuth for secure API access.
+*Authorization*: Role-based access control within the application.
+
+=== Network Architecture
+
+*Internal Network*: Secured internal communication within a virtual private cloud.
+*External Access*: Restricted access through secure APIs and authenticated endpoints.
+
+== 4. System Context
+
+=== External Systems and Their Interfaces
+
+- **Vehicle Registration Authority**
+  - **Interface**: REST API
+  - **Data Flow**: Sends vehicle data, receives registration status.
+
+=== Data Flow Between Systems
+
+1. Vehicle data is sent from the Vehicle Controller to the Vehicle Registration Authority.
+2. Registration status is received from the Vehicle Registration Authority and processed by the Vehicle Controller.
+
+=== Authentication and Authorization Flows at System Level
+
+Authentication is managed via OAuth tokens for API access. Authorization is enforced in the Vehicle Controller, ensuring that only authorized users can access or modify vehicle data.
