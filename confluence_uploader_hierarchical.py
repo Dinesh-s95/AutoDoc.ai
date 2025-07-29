@@ -14,12 +14,12 @@ import subprocess
 from datetime import datetime
 from pathlib import Path
 
-# Configuration
-CONFLUENCE_URL = "https://sharan99r.atlassian.net"
-CONFLUENCE_USER = "sharan99r@gmail.com"
-CONFLUENCE_API_TOKEN = "ATATT3xFfGF0YEQDKHLV0oermB28ByBuIADqdGqjym2PvYoOQc3Xg_z0fwGiucI2El0RaQGFSFFxEpXgH1SqtyWyvOc7sqoOuPVxCe033l-1-c6_glF5CWf1M7qe5o7nFAbwK4Abwa-at7XCewkcAJbfn7jCu53CnQYbPNfzFPlrAK-LzqdJCt8=E58519F7"
-SPACE_KEY = "~712020a1106f7965b7429fa169a05d4788f4d5"
-DOCS_FOLDER = "/Users/sharanr/Documents/Valtech/Others/AI-Hackathon/auto-doc/AutoDoc.ai/identityprovider/documentation"
+# Configuration - Use environment variables when available
+CONFLUENCE_URL = os.getenv("CONFLUENCE_URL", "https://sharan99r.atlassian.net")
+CONFLUENCE_USER = os.getenv("CONFLUENCE_USER", "sharan99r@gmail.com")
+CONFLUENCE_API_TOKEN = os.getenv("CONFLUENCE_API_TOKEN", "ATATT3xFfGF0YEQDKHLV0oermB28ByBuIADqdGqjym2PvYoOQc3Xg_z0fwGiucI2El0RaQGFSFFxEpXgH1SqtyWyvOc7sqoOuPVxCe033l-1-c6_glF5CWf1M7qe5o7nFAbwK4Abwa-at7XCewkcAJbfn7jCu53CnQYbPNfzFPlrAK-LzqdJCt8=E58519F7")
+SPACE_KEY = os.getenv("SPACE_KEY", "~712020a1106f7965b7429fa169a05d4788f4d5")
+DOCS_FOLDER = os.getenv("DOCS_FOLDER", "./identityprovider/documentation")
 
 class ConfluenceUploader:
     def __init__(self):
@@ -484,6 +484,16 @@ class ConfluenceUploader:
         doc_files, diagram_files = self.find_documentation_files()
         if not doc_files:
             print("No documentation files found to upload.")
+            print(f"Searched in folder: {DOCS_FOLDER}")
+            if os.path.exists(DOCS_FOLDER):
+                print("Folder exists but contains no supported files (.md, .adoc, .txt, .rst)")
+                try:
+                    files_in_folder = os.listdir(DOCS_FOLDER)
+                    print(f"Files in folder: {files_in_folder}")
+                except Exception as e:
+                    print(f"Could not list folder contents: {e}")
+            else:
+                print("Documentation folder does not exist")
             return False
 
         print(f"\nReady to process {len(doc_files)} documentation files.")
@@ -542,9 +552,33 @@ class ConfluenceUploader:
 
 def main():
     """Main entry point"""
-    uploader = ConfluenceUploader()
-    success = uploader.upload_documentation()
-    sys.exit(0 if success else 1)
+    print("Starting Confluence Documentation Uploader")
+    print(f"Current working directory: {os.getcwd()}")
+    print(f"Documentation folder: {DOCS_FOLDER}")
+    print(f"Confluence URL: {CONFLUENCE_URL}")
+    print(f"Space Key: {SPACE_KEY}")
+    print("-" * 50)
+
+    # Check if documentation folder exists
+    if not os.path.exists(DOCS_FOLDER):
+        print(f"ERROR: Documentation folder does not exist: {DOCS_FOLDER}")
+        print("Available files in current directory:")
+        try:
+            for item in os.listdir("."):
+                print(f"  - {item}")
+        except Exception as e:
+            print(f"  Could not list directory: {e}")
+        sys.exit(1)
+
+    try:
+        uploader = ConfluenceUploader()
+        success = uploader.upload_documentation()
+        sys.exit(0 if success else 1)
+    except Exception as e:
+        print(f"ERROR: Script failed with exception: {e}")
+        import traceback
+        traceback.print_exc()
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
