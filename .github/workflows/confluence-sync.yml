@@ -10,12 +10,12 @@ jobs:
   sync-to-confluence:
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
-    
+
     permissions:
       contents: read
       pull-requests: write
       issues: write
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -25,7 +25,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install Python dependencies
         run: |
@@ -38,10 +38,10 @@ jobs:
           # Check if documentation files were changed in this PR
           CHANGED_DOCS=$(git diff --name-only HEAD^ HEAD | grep -E '\.(md|adoc)$' | head -10 || true)
           DOC_FOLDERS="identityprovider/documentation"
-          
+
           echo "Changed documentation files:"
           echo "$CHANGED_DOCS"
-          
+
           # Check if any documentation folder exists
           HAS_DOCS=false
           for folder in $DOC_FOLDERS; do
@@ -51,7 +51,7 @@ jobs:
               break
             fi
           done
-          
+
           echo "has_docs=$HAS_DOCS" >> $GITHUB_OUTPUT
           echo "changed_docs<<EOF" >> $GITHUB_OUTPUT
           echo "$CHANGED_DOCS" >> $GITHUB_OUTPUT
@@ -61,9 +61,9 @@ jobs:
         if: steps.check-docs.outputs.has_docs == 'true'
         env:
           CONFLUENCE_URL: "https://sharan99r.atlassian.net"
-          CONFLUENCE_USER: "sharan99r@gmail.com"
-          CONFLUENCE_API_TOKEN: "ATATT3xFfGF0YEQDKHLV0oermB28ByBuIADqdGqjym2PvYoOQc3Xg_z0fwGiucI2El0RaQGFSFFxEpXgH1SqtyWyvOc7sqoOuPVxCe033l-1-c6_glF5CWf1M7qe5o7nFAbwK4Abwa-at7XCewkcAJbfn7jCu53CnQYbPNfzFPlrAK-LzqdJCt8=E58519F7"
-          SPACE_KEY: "~712020a1106f7965b7429fa169a05d4788f4d5"
+          CONFLUENCE_USER: ${{ secrets.CONFLUENCE_USER }}
+          CONFLUENCE_API_TOKEN: ${{ secrets.CONFLUENCE_API_TOKEN }}
+          SPACE_KEY: ${{ secrets.SPACE_KEY }}
           DOCS_FOLDER: "./identityprovider/documentation"
         run: |
           echo "Running Confluence documentation uploader..."
@@ -71,7 +71,7 @@ jobs:
           echo "Author: ${{ github.event.pull_request.user.login }}"
           echo "Merged at: $(date '+%B %d, %Y at %H:%M UTC')"
           echo ""
-          
+
           # Debug information
           echo "=== Debug Information ==="
           echo "Current directory: $(pwd)"
@@ -90,7 +90,7 @@ jobs:
           fi
           echo "========================"
           echo ""
-          
+
           # Run the hierarchical uploader
           python confluence_uploader_hierarchical.py
       - name: Post success comment
