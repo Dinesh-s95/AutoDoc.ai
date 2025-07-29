@@ -2,11 +2,11 @@
 
 == Introduction
 
-The Enrollment API provides services for managing user enrollments in a system. This API allows for nominating a primary user among other functionalities.
+The Enrollment API provides services related to user enrollment processes. This API allows clients to nominate a primary user among other functionalities.
 
 === Authentication Requirements
 
-Currently, there is no authentication implemented for this API. It is recommended to implement at least basic authentication for production environments.
+Currently, this API does not require authentication for access. However, future versions might include OAuth2 or API key-based authentication mechanisms.
 
 === Base URL and Versioning
 
@@ -14,7 +14,7 @@ The base URL for the API is `https://api.example.com/v1`. All endpoints describe
 
 === How to Use This Specification
 
-This document is structured to provide all necessary details to interact with the API effectively. The OpenAPI 3.0 specification section can be used with tools like Swagger UI, Postman, or Insomnia to import the API structure and test the endpoints directly.
+This document is structured to provide a comprehensive overview of the API's capabilities, including detailed descriptions of each endpoint, request and response schemas, and example requests and responses. This specification can be imported into tools like Swagger UI, Postman, or Insomnia for further exploration and testing.
 
 == OpenAPI 3.0 YAML Specification
 
@@ -38,74 +38,89 @@ paths:
           required: true
           schema:
             type: string
+          description: Username of the user to be nominated as primary.
       responses:
         '200':
-          description: Successful operation
+          description: Successful nomination of primary user.
           content:
             text/plain:
               schema:
                 type: string
-                example: "Primary user nominated successfully."
+                example: "User nominated as primary successfully."
         '400':
-          description: Bad request
+          description: Bad request if the username parameter is missing.
           content:
-            application/json:
+            text/plain:
               schema:
-                $ref: '#/components/schemas/Error'
+                type: string
+                example: "Missing required parameter: username."
+        '500':
+          description: Internal server error.
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "Internal server error."
 components:
   schemas:
-    Error:
+    UserResponseDTO:
       type: object
       properties:
-        message:
+        mobilityUserId:
           type: string
-          example: "Invalid request parameters."
+        username:
+          type: string
+        vin:
+          type: string
+    Enrollment:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        role:
+          type: string
+        username:
+          type: string
+        vin:
+          type: string
 ----
 
 == API Documentation
 
-=== Endpoint Descriptions and Usage Examples
+=== Endpoint: POST /nominatePrimary
 
-==== Nominate Primary User
+==== Description
 
-Endpoint to nominate a primary user for an account.
+This endpoint nominates a user as the primary user based on the provided username.
 
-===== HTTP Method: POST
-===== URL: `/nominatePrimary`
-===== Query Parameters:
-  * `username` (required): The username of the user to nominate as primary.
+==== Usage Example
 
-===== Request Example:
-
+Request:
 [source,http]
 ----
-POST /nominatePrimary?username=john_doe HTTP/1.1
+POST /nominatePrimary?username=johndoe HTTP/1.1
 Host: api.example.com
 ----
 
-===== Response Example:
-
+Response:
 [source,http]
 ----
 HTTP/1.1 200 OK
 Content-Type: text/plain
 
-Primary user nominated successfully.
+User nominated as primary successfully.
 ----
 
-=== Authentication Flows
+==== Authentication Flows
 
-Currently, no authentication is required to access the API endpoints. It is advised to implement authentication mechanisms to secure the API access.
+No authentication is required to access this endpoint.
 
-=== Common Error Codes and Their Meanings
+==== Common Error Codes
 
-- `400 Bad Request`: The request was unacceptable, often due to missing a required parameter.
-- `500 Internal Server Error`: Something went wrong on the server side.
+- `400 Bad Request`: This error occurs if the `username` parameter is missing.
+- `500 Internal Server Error`: This error indicates an issue on the server side.
 
-=== Rate Limiting Information
+== Rate Limiting Information
 
-There is no rate limiting enforced in the current version of the API. It is recommended to implement rate limiting to prevent abuse.
-
-== Conclusion
-
-This document provides a detailed description of the Enrollment API along with a complete OpenAPI specification. For further assistance or feedback, please contact the API support team.
+There are no rate limits enforced by this API at the current stage. However, clients are encouraged to use the API responsibly to avoid potential throttling in the future.
