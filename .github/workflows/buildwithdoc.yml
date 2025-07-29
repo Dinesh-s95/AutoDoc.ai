@@ -32,7 +32,7 @@ jobs:
           cd autodoc-ai-mcp-server
           npm ci
           npm run build
-          node mcp-launcher.js generate
+          node mcp-launcher.js all
 
       - name: Check for changes
         id: changes
