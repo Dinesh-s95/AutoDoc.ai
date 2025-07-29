@@ -1,8 +1,5 @@
 === IdentityProviderClient
 
-Purpose::
-Feign client for interacting with an external identity provider service.
-
 Annotations::
 - `@FeignClient`: Declares that this interface is a Feign client.
 - `@PostMapping`: Indicates that this method of the Feign client would map to an HTTP POST.
