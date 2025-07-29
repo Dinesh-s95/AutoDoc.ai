@@ -1,16 +1,20 @@
-== Introduction to the User API
+= Identity Provider API Documentation
 
-=== Overview
-The User API provides endpoints for managing user authentication and registration within our application. It allows clients to register new users, log in, and access user-specific greetings.
+== Introduction
+
+The Identity Provider API provides a set of RESTful services for user authentication and management. This API allows clients to register users, log in, and access user greetings. It is designed for applications requiring user authentication and token management.
 
 === Authentication Requirements
-All sensitive endpoints require a valid JSON Web Token (JWT) to ensure that requests are authenticated. The token must be included in the Authorization header of the request.
+
+The API uses JWT (JSON Web Tokens) for securing endpoints. Clients must authenticate by providing a valid JWT in the `Authorization` header of their HTTP requests.
 
 === Base URL and Versioning
+
 The base URL for all API endpoints is `https://api.example.com/v1`. This API is currently at version 1.
 
 === How to Use This Specification
-This OpenAPI specification is designed to be used with tools that support the OpenAPI 3.0 format, such as Swagger UI, Postman, and Insomnia. You can import this specification into any of these tools to explore the API and test different endpoints.
+
+This document is formatted according to the OpenAPI 3.0 specification. It can be imported into tools like Swagger UI, Postman, or Insomnia for interactive exploration and testing of the API endpoints.
 
 == OpenAPI 3.0 YAML Specification
 
@@ -18,9 +22,9 @@ This OpenAPI specification is designed to be used with tools that support the Op
 ----
 openapi: 3.0.0
 info:
-  title: User API
+  title: Identity Provider API
   version: 1.0.0
-  description: API for user authentication and registration
+  description: API for user authentication and management.
 servers:
   - url: https://api.example.com/v1
 paths:
@@ -31,7 +35,6 @@ paths:
       tags:
         - User
       requestBody:
-        description: User login credentials
         required: true
         content:
           application/json:
@@ -45,11 +48,24 @@ paths:
               schema:
                 $ref: '#/components/schemas/AuthResponse'
         '401':
-          description: Authentication failed
+          description: Unauthorized
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+  /greet:
+    get:
+      summary: Returns a greeting
+      operationId: greetUser
+      tags:
+        - User
+      responses:
+        '200':
+          description: Successful greeting
+          content:
+            text/plain:
+              schema:
+                type: string
   /register:
     post:
       summary: Registers a new user
@@ -57,7 +73,6 @@ paths:
       tags:
         - User
       requestBody:
-        description: User registration data
         required: true
         content:
           application/json:
@@ -65,7 +80,7 @@ paths:
               $ref: '#/components/schemas/Users'
       responses:
         '201':
-          description: User registered successfully
+          description: User registered
           content:
             application/json:
               schema:
@@ -119,18 +134,21 @@ securitySchemes:
 === Endpoint Descriptions and Usage Examples
 
 ==== Login
-Endpoint to authenticate a user and retrieve a token.
 
-Example Request:
+Endpoint: `POST /login`
+
+Description: Authenticates a user and returns a JWT.
+
+Request:
 [source,json]
 ----
 {
-  "username": "john_doe",
-  "password": "example"
+  "username": "user1",
+  "password": "password123"
 }
 ----
 
-Example Response:
+Response:
 [source,json]
 ----
 {
@@ -138,36 +156,51 @@ Example Response:
 }
 ----
 
-==== Register
-Endpoint to register a new user in the system.
+==== Greet
 
-Example Request:
+Endpoint: `GET /greet`
+
+Description: Returns a simple greeting message.
+
+Response:
+[source]
+----
+Hello, user!
+----
+
+==== Register User
+
+Endpoint: `POST /register`
+
+Description: Registers a new user in the system.
+
+Request:
 [source,json]
 ----
 {
-  "username": "new_user",
-  "password": "new_password"
+  "username": "newuser",
+  "password": "newpassword123"
 }
 ----
 
-Example Response:
+Response:
 [source,json]
 ----
 {
-  "userId": 1,
-  "username": "new_user",
-  "password": "new_password"
+  "userId": 101,
+  "username": "newuser"
 }
 ----
 
 === Authentication Flows
-Users must authenticate via the `/login` endpoint to receive a JWT. This token must be included in the `Authorization` header as `Bearer <token>` for all secured endpoints.
+
+Authentication is performed via JWT. Users must first authenticate through the `/login` endpoint to receive a token. This token must be included in the `Authorization` header as `Bearer <token>` for subsequent requests to secured endpoints.
 
 === Common Error Codes
-- `401 Unauthorized`: Authentication is required and has failed or has not yet been provided.
-- `400 Bad Request`: The server cannot or will not process the request due to something that is perceived to be a client error (e.g., malformed request syntax).
 
-=== Rate Limiting
-Currently, there is no rate limiting enforced on the API. However, future versions may include this feature to prevent abuse.
+- `401 Unauthorized`: The request lacks valid authentication credentials.
+- `400 Bad Request`: The request is malformed or missing required parameters.
 
-This document provides a detailed guide to using the User API, including request and response examples, schema definitions, and authentication requirements. It is designed to be fully compliant with OpenAPI 3.0 specifications and is ready for import into API management tools.
+=== Rate Limiting Information
+
+Currently, there is no rate limiting enforced on the API endpoints. However, this may be subject to change as the API evolves.
