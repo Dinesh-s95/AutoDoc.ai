@@ -50,6 +50,7 @@
     ],
     "methods": [
       "public String assignVehicle(@RequestParam String username, @RequestParam String vin, @RequestParam String brand, @RequestParam String country)",
+      "public String onboardUser()",
       "public String onboardUser(@RequestParam String username, @RequestParam String password)"
     ],
     "endpoints": [],
