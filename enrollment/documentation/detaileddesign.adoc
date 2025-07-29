@@ -1,5 +1,3 @@
-= Detailed Design Documentation for Enrollment Application
-
 This document provides a comprehensive detailed design analysis of the Enrollment Application, a Java Spring Boot application. It includes class-by-class analysis, runtime view diagrams, entity relationship diagrams, and detailed component interactions.
 
 == Class-by-Class Analysis
