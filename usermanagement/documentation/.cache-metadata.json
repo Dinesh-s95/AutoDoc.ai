@@ -1,6 +1,6 @@
 {
   "sourceHash": "872325793c229d1b76af0280cd14be25b6d59e9f7cfccd1e4d0d58565d06e7cc",
-  "lastUpdated": "2025-07-29T03:44:38.109Z",
+  "lastUpdated": "2025-07-29T06:04:37.919Z",
   "sourceFiles": [
     "src/main/java/com/vm/usermanagement/UsermanagementApplication.java",
     "src/main/java/com/vm/usermanagement/client/IdentityProviderClient.java",

@@ -1,6 +1,6 @@
 {
   "sourceHash": "23225cbda858a4840955350bfd426cf200910a20982439ea6af710d59bc347cb",
-  "lastUpdated": "2025-07-29T03:45:53.803Z",
+  "lastUpdated": "2025-07-29T06:04:54.983Z",
   "sourceFiles": [
     "src/main/java/com/vm/vehiclemanagement/Entity/Vehicle.java",
     "src/main/java/com/vm/vehiclemanagement/VehiclemanagementApplication.java",

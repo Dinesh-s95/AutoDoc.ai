@@ -1,0 +1,48 @@
+🚀 Starting Confluence Documentation Upload
+==================================================
+🔍 Testing Confluence API connection...
+✅ Successfully connected to Confluence!
+📄 Space Name: Sharan R
+📝 Space Key: ~712020a1106f7965b7429fa169a05d4788f4d5
+📁 Scanning for documentation files in: /Users/sharanr/Documents/Valtech/Others/AI-Hackathon/auto-doc/AutoDoc.ai/identityprovider/documentation
+📄 Found 3 documentation files:
+   - detaileddesign.adoc
+   - openApiSpecification.adoc
+   - architecturedesign.adoc
+
+🤔 Ready to create a parent page with 3 child pages.
+This will create:
+  📄 1 Parent page: Identity Provider Documentation
+  📝 Child page: Detailed Design
+  📝 Child page: OpenAPI Specification
+  📝 Child page: Architecture Design
+
+✅ Proceeding with upload...
+📄 Creating parent documentation page...
+✅ Parent page created successfully!
+📄 Page Title: Identity Provider Documentation - 2025-07-28 19:12 (JPKS)
+🆔 Page ID: 4685825
+
+📝 Creating 3 separate child pages...
+
+[1/3] Processing: detaileddesign.adoc
+📝 Creating child page: Detailed Design (JPKS)
+  ❌ Error creating child page 'Detailed Design (JPKS)': 'ConfluenceUploader' object has no attribute 'convert_adoc_to_html'
+  ❌ Failed to create child page for detaileddesign.adoc
+
+[2/3] Processing: openApiSpecification.adoc
+📝 Creating child page: OpenAPI Specification (JPKS)
+  ❌ Error creating child page 'OpenAPI Specification (JPKS)': 'ConfluenceUploader' object has no attribute 'convert_adoc_to_html'
+  ❌ Failed to create child page for openApiSpecification.adoc
+
+[3/3] Processing: architecturedesign.adoc
+📝 Creating child page: Architecture Design (JPKS)
+  ❌ Error creating child page 'Architecture Design (JPKS)': 'ConfluenceUploader' object has no attribute 'convert_adoc_to_html'
+  ❌ Failed to create child page for architecturedesign.adoc
+
+==================================================
+🎉 Documentation upload completed!
+✅ Parent page created: Identity Provider Documentation - 2025-07-28 19:12 (JPKS)
+✅ 0/3 child pages created successfully
+❌ Failed files: detaileddesign.adoc, openApiSpecification.adoc, architecturedesign.adoc
+🔗 View at: https://sharan99r.atlassian.net/wiki/spaces/~712020a1106f7965b7429fa169a05d4788f4d5/pages/4685825

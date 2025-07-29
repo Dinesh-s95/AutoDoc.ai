@@ -1,39 +1,22 @@
-= Vehicle Management API Documentation
+= Introduction
 
-== Introduction
+This OpenAPI Specification document outlines the REST API for managing vehicles. The API provides endpoints for registering vehicles and verifying vehicle registration. Authentication is required for all endpoints using OAuth 2.0 with the "Bearer" token type. The base URL for this API is `https://api.example.com/v1`. To use this specification, import the YAML file into your API documentation tool or API client.
 
-The Vehicle Management API provides services for registering and verifying vehicle registrations. It is designed for use by automotive companies to manage vehicle information efficiently.
-
-=== Authentication Requirements
-
-Currently, no authentication is required to access the API endpoints.
-
-=== Base URL and Versioning
-
-The API is accessible at `http://api.example.com/v1`. This documentation refers to version 1 of the API.
-
-=== How to Use This Specification
-
-This document is structured according to the OpenAPI 3.0 specification. It can be imported into tools like Swagger UI, Postman, or Insomnia for interactive exploration and testing of the API endpoints.
-
-== OpenAPI 3.0 YAML Specification
+== OpenAPI 3.0 Specification
 
 [source,yaml]
 ----
 openapi: 3.0.0
 info:
   title: Vehicle Management API
+  description: REST API for managing vehicles
   version: 1.0.0
-  description: API for managing vehicle registrations
 servers:
-  - url: http://api.example.com/v1
+  - url: https://api.example.com/v1
 paths:
   /vehicles/register:
     post:
       summary: Register a new vehicle
-      operationId: registerVehicle
-      tags:
-        - Vehicle
       requestBody:
         required: true
         content:
@@ -41,14 +24,10 @@ paths:
             schema:
               $ref: '#/components/schemas/Vehicle'
       responses:
-        '201':
-          description: Vehicle registered successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Vehicle'
+        '200':
+          description: Vehicle registration successful
         '400':
-          description: Invalid input
+          description: Bad request
           content:
             application/json:
               schema:
@@ -56,37 +35,25 @@ paths:
   /vehicles/verify:
     get:
       summary: Verify vehicle registration
-      operationId: verifyRegistration
-      tags:
-        - Vehicle
       parameters:
-        - in: query
-          name: vin
-          schema:
-            type: string
+        - name: vin
+          in: query
           required: true
-          description: Vehicle Identification Number
-        - in: query
-          name: brand
           schema:
             type: string
-          required: false
-          description: Brand of the vehicle
-        - in: query
-          name: country
+        - name: brand
+          in: query
           schema:
             type: string
-          required: false
-          description: Country of registration
+        - name: country
+          in: query
+          schema:
+            type: string
       responses:
         '200':
-          description: Verification successful
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Vehicle'
-        '404':
-          description: Vehicle not found
+          description: Vehicle registration verified
+        '400':
+          description: Bad request
           content:
             application/json:
               schema:
@@ -96,108 +63,86 @@ components:
     Vehicle:
       type: object
       properties:
-        vin:
-          type: string
-          description: Vehicle Identification Number
         brand:
           type: string
-          description: Brand of the vehicle
         country:
           type: string
-          description: Country of registration
-        model:
-          type: string
-          description: Model of the vehicle
         device:
           type: string
-          description: Device identifier
+        model:
+          type: string
         sop:
           type: string
           format: date
-          description: Start of production date
-      required:
-        - vin
-        - brand
-        - country
+        vin:
+          type: string
     Error:
       type: object
       properties:
-        message:
-          type: string
-          description: Error message
         code:
           type: integer
-          format: int32
-          description: Error code
+        message:
+          type: string
+security:
+  - OAuth2:
+      - 'read'
+      - 'write'
 ----
 
 == API Documentation
 
-=== Endpoint Descriptions and Usage Examples
+=== /vehicles/register (POST)
 
-==== Register Vehicle
+Register a new vehicle.
 
-Endpoint to register a new vehicle in the system.
-
-===== Request Example
+==== Request
 
 [source,json]
 ----
 {
-  "vin": "1HGBH41JXMN109186",
-  "brand": "Honda",
+  "brand": "Toyota",
   "country": "Japan",
-  "model": "Civic",
-  "device": "X7GTR",
-  "sop": "2021-06-15"
+  "device": "Car",
+  "model": "Corolla",
+  "sop": "2022-01-01",
+  "vin": "123456789"
 }
 ----
 
-===== Response Example
+==== Response
 
 [source,json]
 ----
 {
-  "vin": "1HGBH41JXMN109186",
-  "brand": "Honda",
-  "country": "Japan",
-  "model": "Civic",
-  "device": "X7GTR",
-  "sop": "2021-06-15"
+  "message": "Vehicle registered successfully"
 }
 ----
 
-==== Verify Registration
+=== /vehicles/verify (GET)
 
-Endpoint to verify the registration details of a vehicle.
+Verify vehicle registration.
 
-===== Request Example
+==== Parameters
 
-[source,http]
-----
-GET /vehicles/verify?vin=1HGBH41JXMN109186&brand=Honda&country=Japan HTTP/1.1
-Host: api.example.com
-----
+- `vin` (required, string): Vehicle Identification Number
+- `brand` (string): Brand of the vehicle
+- `country` (string): Country of registration
 
-===== Response Example
+==== Response
 
 [source,json]
 ----
 {
-  "vin": "1HGBH41JXMN109186",
-  "brand": "Honda",
-  "country": "Japan",
-  "model": "Civic",
-  "device": "X7GTR",
-  "sop": "2021-06-15"
+  "message": "Vehicle registration verified"
 }
 ----
 
-=== Common Error Codes and Their Meanings
+=== Authentication
 
-- `400` - Bad Request: The request was invalid or cannot be served. Check the input.
-- `404` - Not Found: The specified resource was not found.
+All endpoints require OAuth 2.0 authentication with the "Bearer" token type. Ensure you include the access token in the request headers.
 
-=== Rate Limiting Information
+=== Error Codes
 
-Currently, there is no rate limiting in place for the API.
+- `400`: Bad request. Check the request parameters and try again.
+
+This completes the OpenAPI Specification for the Vehicle Management API.
