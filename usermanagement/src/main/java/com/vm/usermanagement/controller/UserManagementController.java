@@ -16,6 +16,11 @@ public class UserManagementController {
         return service.onboardUser(username, password);
     }
 
+    @PostMapping("/greet")
+    public String onboardUser() {
+        return "greet";
+    }
+
     @PostMapping("/assign-vehicle")
     public String assignVehicle(@RequestParam String username,
             @RequestParam String vin,
