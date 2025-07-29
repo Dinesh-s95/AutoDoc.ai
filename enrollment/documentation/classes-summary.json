@@ -36,8 +36,7 @@
       "RestController"
     ],
     "methods": [
-      "public String nominatePrimary(@RequestParam String username)",
-      "public String nominatePrimarygreet()"
+      "public String nominatePrimary(@RequestParam String username)"
     ],
     "endpoints": [],
     "fields": [
