@@ -1,9 +1,4 @@
-== Class-by-Class Analysis
-
 === UsermanagementApplication
-
-Purpose::
-The entry point of the Spring Boot application.
 
 Annotations::
 - `@EnableFeignClients`: Enables the discovery of interfaces that declare they are Feign clients.
