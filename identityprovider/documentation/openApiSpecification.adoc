@@ -1,5 +1,3 @@
-Below is the comprehensive ADOC document containing the OpenAPI 3.0 specification for the provided Java REST controller classes, focusing on the `UserController` class. This document includes an introduction, a complete YAML specification, and detailed API documentation.
-
 == Introduction to the User API
 
 === Overview
