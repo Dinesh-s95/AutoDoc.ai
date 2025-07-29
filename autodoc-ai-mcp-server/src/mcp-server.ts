@@ -359,11 +359,11 @@ class JavaDocumentationMCPServer {
             text: `📊 Cache Status Report:\n\n` +
                   `📁 Classes Summary Exists: ${cacheStatus.classesSummaryExists ? '✅' : '❌'}\n` +
                   `🗂️  Cache Metadata Exists: ${cacheStatus.cacheMetadataExists ? '✅' : '❌'}\n` +
-                  `🔄 Source Files Changed: ${cacheStatus.sourceFilesChanged ? '🔄 YES (regeneration needed)' : '✅ NO (cache valid)'}\n` +
+                  `🔄 Java Files Changed: ${cacheStatus.sourceFilesChanged ? '🔄 YES (regeneration needed)' : '✅ NO (cache valid)'}\n` +
                   `📅 Last Updated: ${cacheStatus.lastUpdated}\n` +
-                  `📝 Source Files Found: ${cacheStatus.sourceFileCount}\n` +
+                  `📝 Java Files Found: ${cacheStatus.sourceFileCount}\n` +
                   `📋 Classes in Cache: ${cacheStatus.classCount}\n\n` +
-                  `🔍 Hash Comparison:\n` +
+                  `🔍 Hash Comparison (Java files only):\n` +
                   `   Current:  ${cacheStatus.currentSourceHash}\n` +
                   `   Cached:   ${cacheStatus.cachedSourceHash}\n\n` +
                   `💡 Recommendation: ${cacheStatus.sourceFilesChanged ? 
@@ -392,16 +392,21 @@ class JavaDocumentationMCPServer {
     for (const filePath of javaFiles) {
       try {
         const content = await fs.readFile(filePath, 'utf-8');
-        const stats = await fs.stat(filePath);
         
-        // Include file path, content, and modification time in hash
-        hash.update(`${filePath}:${stats.mtime.toISOString()}:${content}`);
+        // Only hash the content of Java files, ignore metadata like modification time
+        // This ensures only actual Java code changes trigger regeneration
+        const relativePath = path.relative(projectPath, filePath);
+        hash.update(`${relativePath}:${content}`);
+        
+        this.logDebug(`Hashing Java file: ${relativePath}`);
       } catch (error) {
-        this.logError(`Failed to read file for hashing: ${filePath}`, error);
+        this.logError(`Failed to read Java file for hashing: ${filePath}`, error);
       }
     }
     
-    return hash.digest('hex');
+    const finalHash = hash.digest('hex');
+    this.logDebug(`Calculated source hash for ${javaFiles.length} Java files: ${finalHash}`);
+    return finalHash;
   }
 
   private async shouldRegenerateClassesSummary(projectPath: string, forceRegenerate: boolean = false): Promise<boolean> {
@@ -424,18 +429,38 @@ class JavaDocumentationMCPServer {
       const metadataContent = await fs.readFile(cacheMetadataPath, 'utf-8');
       const metadata: CacheMetadata = JSON.parse(metadataContent);
       
-      // Calculate current source hash
+      // Calculate current source hash (only considers Java files)
       const currentSourceHash = await this.calculateSourceHash(projectPath);
       
-      if (metadata.sourceHash === currentSourceHash) {
-        this.logInfo('✅ Source files unchanged, using cached classes-summary.json');
+      // Get current Java files for comparison
+      const currentJavaFiles = await this.findJavaFiles(projectPath);
+      const currentRelativeFiles = currentJavaFiles.map(file => path.relative(projectPath, file)).sort();
+      
+      // Check if Java files have changed
+      const filesChanged = JSON.stringify(metadata.sourceFiles) !== JSON.stringify(currentRelativeFiles);
+      const contentChanged = metadata.sourceHash !== currentSourceHash;
+      
+      if (!filesChanged && !contentChanged) {
+        this.logInfo('✅ No Java file changes detected, using cached classes-summary.json');
+        this.logDebug(`Java files: ${currentJavaFiles.length}, Hash: ${currentSourceHash}`);
         return false;
       } else {
-        this.logInfo('🔄 Source files changed, regeneration needed');
-        this.logDebug('Hash comparison:', {
-          cached: metadata.sourceHash,
-          current: currentSourceHash
-        });
+        if (filesChanged) {
+          this.logInfo('🔄 Java file structure changed, regeneration needed');
+          this.logDebug('File structure changes:', {
+            before: metadata.sourceFiles.length,
+            after: currentRelativeFiles.length,
+            added: currentRelativeFiles.filter(f => !metadata.sourceFiles.includes(f)),
+            removed: metadata.sourceFiles.filter(f => !currentRelativeFiles.includes(f))
+          });
+        }
+        if (contentChanged) {
+          this.logInfo('🔄 Java file content changed, regeneration needed');
+          this.logDebug('Hash comparison:', {
+            cached: metadata.sourceHash,
+            current: currentSourceHash
+          });
+        }
         return true;
       }
     } catch (error) {
@@ -451,14 +476,15 @@ class JavaDocumentationMCPServer {
     const metadata: CacheMetadata = {
       sourceHash,
       lastUpdated: new Date().toISOString(),
-      sourceFiles: javaFiles.sort(),
+      sourceFiles: javaFiles.map(file => path.relative(projectPath, file)).sort(), // Store relative paths
       classCount: classesSummary.length,
     };
 
     const cacheMetadataPath = path.join(this.config.outputPath, '.cache-metadata.json');
     await fs.writeFile(cacheMetadataPath, JSON.stringify(metadata, null, 2));
     
-    this.logDebug('💾 Cache metadata saved:', metadata);
+    this.logInfo(`💾 Cache metadata saved: ${metadata.classCount} classes from ${metadata.sourceFiles.length} Java files`);
+    this.logDebug('💾 Cached Java files:', metadata.sourceFiles);
   }
 
   private async shouldRegenerateDocumentation(forceRegenerate: boolean = false, classesSummaryWasRegenerated: boolean = false): Promise<boolean> {
@@ -512,18 +538,12 @@ class JavaDocumentationMCPServer {
         }
       }
 
-      // Log detailed timestamp information
-      // this.logInfo('🕒 Timestamp comparison details:');
-      // this.logInfo(`   classes-summary.json: ${summaryStats.mtime.toISOString()}`);
-      // this.logInfo(`   Oldest doc file (${oldestDocFile}): ${oldestDocTime.toISOString()}`);
-      // this.logInfo(`   Time difference: ${summaryStats.mtime.getTime() - oldestDocTime.getTime()}ms`);
-
       // If classes-summary.json is newer than documentation files, regenerate
       if (summaryStats.mtime > oldestDocTime) {
         this.logInfo('🔄 classes-summary.json is newer than documentation, regeneration needed');
         return true;
       } else {
-        this.logInfo('\n✅ Documentation is up-to-date (No code changes detected since last generation)');
+        this.logInfo('\n✅ Documentation is up-to-date (No Java code changes detected since last generation)');
         return false;
       }
     } catch (error) {
@@ -564,7 +584,7 @@ class JavaDocumentationMCPServer {
         content: [
           {
             type: 'text',
-            text: `✅ Using cached classes-summary.json (no source changes detected)\n\n📊 Cached analysis contains ${classesSummary.length} classes:\n${classesSummary.map((c: ClassSummary) => `- ${c.className}`).join('\n')}\n\n💡 Use forceRegenerate=true to regenerate anyway`,
+            text: `✅ Using cached classes-summary.json (no Java file changes detected)\n\n📊 Cached analysis contains ${classesSummary.length} classes:\n${classesSummary.map((c: ClassSummary) => `- ${c.className}`).join('\n')}\n\n💡 Use forceRegenerate=true to regenerate anyway`,
           },
         ],
       };
@@ -715,12 +735,12 @@ class JavaDocumentationMCPServer {
       
       await fs.writeFile(classesSummaryPath, JSON.stringify(classesSummary, null, 2));
       await this.saveCacheMetadata(projectPath, classesSummary);
-      pipelineResults.push('🔄 Regenerated classes-summary.json (source files changed)');
+      pipelineResults.push('🔄 Regenerated classes-summary.json (Java files changed)');
     } else {
-      this.logInfo('✅ Using cached classes-summary.json (no source changes)');
+      this.logInfo('✅ Using cached classes-summary.json (no Java file changes)');
       const content = await fs.readFile(classesSummaryPath, 'utf-8');
       classesSummary = JSON.parse(content);
-      pipelineResults.push('✅ Used cached classes-summary.json (no changes)');
+      pipelineResults.push('✅ Used cached classes-summary.json (no Java changes)');
     }
 
     // Step 2: Check if documentation needs regeneration
@@ -766,7 +786,7 @@ class JavaDocumentationMCPServer {
       content: [
         {
           type: 'text',
-          text: `🎉 Full pipeline completed successfully!\n\n`,
+          text: `🎉 Full pipeline completed successfully!\n\n📋 Pipeline Results:\n${pipelineResults.map(result => `- ${result}`).join('\n')}\n\n💡 Only Java file changes trigger regeneration - other files are ignored`,
         },
       ],
     };
@@ -809,17 +829,22 @@ class JavaDocumentationMCPServer {
       for (const entry of entries) {
         const fullPath = path.join(dir, entry.name);
         
-        if (entry.isDirectory() && !entry.name.startsWith('.') && entry.name !== 'target' && entry.name !== 'build') {
+        if (entry.isDirectory() && !entry.name.startsWith('.') && 
+            entry.name !== 'target' && entry.name !== 'build' && 
+            entry.name !== 'node_modules' && entry.name !== 'dist') {
           const subFiles = await this.findJavaFiles(fullPath);
           javaFiles.push(...subFiles);
         } else if (entry.isFile() && entry.name.endsWith('.java')) {
+          // Only include .java files, explicitly ignore all other file types
           javaFiles.push(fullPath);
+          this.logDebug(`Found Java file: ${fullPath}`);
         }
       }
     } catch (error) {
       this.logError(`Error reading directory: ${dir}`, error);
     }
     
+    this.logDebug(`Total Java files found in ${dir}: ${javaFiles.length}`);
     return javaFiles;
   }
 
@@ -880,19 +905,26 @@ class JavaDocumentationMCPServer {
     }
 
     // Parse endpoints (basic extraction)
-    const mappingMatches = content.match(/@(GetMapping|PostMapping|PutMapping|DeleteMapping|RequestMapping)[^}]*/g);
-    if (mappingMatches) {
-      mappingMatches.forEach(mapping => {
-        const methodMatch = content.match(new RegExp(mapping.replace(/[.*+?^${}()|[\]\\]/g, '\\  private async parseJavaFiles(projectPath: string): Promise<ClassSummary[]') + '.*?public.*?(\\w+)\\s*\\('));
-        if (methodMatch) {
-          const mappingType = mapping.match(/@(\w+)/)?.[1] || 'Mapping';
-          const endpointEntry = `${mappingType} -> ${methodMatch[1]}`;
-          if (!endpoints.includes(endpointEntry)) {
-            endpoints.push(endpointEntry);
-          }
-        }
-      });
+   // Parse endpoints (basic extraction)
+const mappingMatches = content.match(/@(GetMapping|PostMapping|PutMapping|DeleteMapping|RequestMapping)[^}]*/g);
+
+if (mappingMatches) {
+  mappingMatches.forEach(mapping => {
+    const methodNameMatch = content.match(
+      new RegExp(mapping.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '.*?public.*?(\\w+)\\s*\\(')
+    );
+
+    if (methodNameMatch) {
+      const mappingType = mapping.match(/@(\w+)/)?.[1] || 'Mapping';
+      const methodName = methodNameMatch[1];
+      const endpointEntry = `${mappingType} -> ${methodName}`;
+      if (!endpoints.includes(endpointEntry)) {
+        endpoints.push(endpointEntry);
+      }
     }
+  });
+}
+
 
     return {
       className,
