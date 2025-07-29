@@ -2,19 +2,19 @@
 
 == Introduction
 
-This document provides a comprehensive overview of the Vehicle Management API, designed to facilitate vehicle registration and verification processes. The API allows clients to register new vehicles and verify existing registrations based on vehicle identification numbers (VINs), brands, and countries.
+The Vehicle Management API provides services for registering and verifying vehicle registrations. It is designed for use by automotive companies to manage vehicle information efficiently.
 
 === Authentication Requirements
 
-Currently, this API does not require authentication. Future versions might include API key or OAuth2 based authentication mechanisms.
+Currently, no authentication is required to access the API endpoints.
 
 === Base URL and Versioning
 
-The base URL for all API endpoints is `https://api.example.com/v1`. This document describes version 1 of the API.
+The API is accessible at `http://api.example.com/v1`. This documentation refers to version 1 of the API.
 
 === How to Use This Specification
 
-This specification is written in accordance with the OpenAPI 3.0 standards. It can be imported into tools like Swagger UI, Postman, or Insomnia for testing and interaction with the API endpoints. Developers and API consumers should refer to this document for understanding request and response formats and error handling.
+This document is structured according to the OpenAPI 3.0 specification. It can be imported into tools like Swagger UI, Postman, or Insomnia for interactive exploration and testing of the API endpoints.
 
 == OpenAPI 3.0 YAML Specification
 
@@ -24,16 +24,16 @@ openapi: 3.0.0
 info:
   title: Vehicle Management API
   version: 1.0.0
-  description: API for managing vehicle registrations and verifications.
+  description: API for managing vehicle registrations
 servers:
-  - url: https://api.example.com/v1
-    description: Production server
-
+  - url: http://api.example.com/v1
 paths:
   /vehicles/register:
     post:
       summary: Register a new vehicle
       operationId: registerVehicle
+      tags:
+        - Vehicle
       requestBody:
         required: true
         content:
@@ -48,16 +48,17 @@ paths:
               schema:
                 $ref: '#/components/schemas/Vehicle'
         '400':
-          description: Invalid input provided
+          description: Invalid input
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
   /vehicles/verify:
     get:
       summary: Verify vehicle registration
       operationId: verifyRegistration
+      tags:
+        - Vehicle
       parameters:
         - in: query
           name: vin
@@ -69,13 +70,13 @@ paths:
           name: brand
           schema:
             type: string
-          required: true
+          required: false
           description: Brand of the vehicle
         - in: query
           name: country
           schema:
             type: string
-          required: true
+          required: false
           description: Country of registration
       responses:
         '200':
@@ -90,7 +91,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-
 components:
   schemas:
     Vehicle:
@@ -110,7 +110,7 @@ components:
           description: Model of the vehicle
         device:
           type: string
-          description: Device associated with the vehicle
+          description: Device identifier
         sop:
           type: string
           format: date
@@ -119,13 +119,12 @@ components:
         - vin
         - brand
         - country
-
     Error:
       type: object
       properties:
         message:
           type: string
-          description: Error message explaining what went wrong
+          description: Error message
         code:
           type: integer
           format: int32
@@ -138,9 +137,7 @@ components:
 
 ==== Register Vehicle
 
-`POST /vehicles/register`
-
-Registers a new vehicle in the system. The request body must include details such as the VIN, brand, and country.
+Endpoint to register a new vehicle in the system.
 
 ===== Request Example
 
@@ -151,8 +148,8 @@ Registers a new vehicle in the system. The request body must include details suc
   "brand": "Honda",
   "country": "Japan",
   "model": "Civic",
-  "device": "Device123",
-  "sop": "2023-01-01"
+  "device": "X7GTR",
+  "sop": "2021-06-15"
 }
 ----
 
@@ -165,22 +162,21 @@ Registers a new vehicle in the system. The request body must include details suc
   "brand": "Honda",
   "country": "Japan",
   "model": "Civic",
-  "device": "Device123",
-  "sop": "2023-01-01"
+  "device": "X7GTR",
+  "sop": "2021-06-15"
 }
 ----
 
 ==== Verify Registration
 
-`GET /vehicles/verify`
-
-Verifies if a vehicle with the specified VIN, brand, and country is registered.
+Endpoint to verify the registration details of a vehicle.
 
 ===== Request Example
 
-[source]
+[source,http]
 ----
-GET /vehicles/verify?vin=1HGBH41JXMN109186&brand=Honda&country=Japan
+GET /vehicles/verify?vin=1HGBH41JXMN109186&brand=Honda&country=Japan HTTP/1.1
+Host: api.example.com
 ----
 
 ===== Response Example
@@ -192,18 +188,16 @@ GET /vehicles/verify?vin=1HGBH41JXMN109186&brand=Honda&country=Japan
   "brand": "Honda",
   "country": "Japan",
   "model": "Civic",
-  "device": "Device123",
-  "sop": "2023-01-01"
+  "device": "X7GTR",
+  "sop": "2021-06-15"
 }
 ----
 
 === Common Error Codes and Their Meanings
 
-- `400 Bad Request`: The request was invalid or cannot be served. Check the message for more details.
-- `404 Not Found`: The specified resource was not found. This can also occur if the request was malformed.
+- `400` - Bad Request: The request was invalid or cannot be served. Check the input.
+- `404` - Not Found: The specified resource was not found.
 
 === Rate Limiting Information
 
-Currently, there is no rate limiting in place for this API. Future versions may include rate limiting policies to ensure fair usage.
-
-This document provides a detailed overview of the Vehicle Management API, including how to interact with it and understand its responses and errors.
+Currently, there is no rate limiting in place for the API.

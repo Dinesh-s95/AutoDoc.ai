@@ -2,19 +2,19 @@
 
 == Introduction
 
-The User Management API provides functionalities related to managing users and their associated vehicles in a mobility service platform. This API allows operations such as user onboarding and vehicle assignment to users.
+The User Management API provides services for managing users and their vehicle assignments within a mobility platform. This API allows operations such as onboarding new users and assigning vehicles to existing users.
 
 === Authentication Requirements
 
-All API requests require authentication. Clients must provide a valid API key as a part of the request header.
+The API requires API key authentication for all its endpoints. Each request must include an API key in the header.
 
 === Base URL and Versioning
 
-The base URL for all API endpoints is `https://api.example.com/v1`. This documentation refers to version 1 of the API.
+The base URL for the API is `https://api.example.com/v1`. This documentation refers to version 1 of the API.
 
 === How to Use This Specification
 
-This document is structured to provide all necessary details to interact with the API effectively. Use this specification to understand the request and response formats and to learn about the available endpoints. You can import the YAML specification into tools like Swagger UI, Postman, or Insomnia to interact with the API directly.
+This specification is written in OpenAPI 3.0 format and can be used with tools that support the OpenAPI Specification (OAS), such as Swagger UI, Postman, and Insomnia. You can import this YAML into any of these tools to interact with the API or generate client code.
 
 == OpenAPI 3.0 YAML Specification
 
@@ -24,7 +24,7 @@ openapi: 3.0.0
 info:
   title: User Management API
   version: 1.0.0
-  description: API for managing users and their vehicles in a mobility service platform.
+  description: API for managing users and their vehicle assignments in a mobility platform.
 servers:
   - url: https://api.example.com/v1
     description: Production server
@@ -90,7 +90,7 @@ paths:
             type: string
       responses:
         '200':
-          description: Vehicle assigned to user
+          description: Vehicle assigned successfully
           content:
             text/plain:
               schema:
@@ -110,8 +110,9 @@ components:
       properties:
         message:
           type: string
-        code:
-          type: integer
+          example: "Invalid parameters provided"
+      required:
+        - message
 
 security:
   - ApiKeyAuth: []
@@ -129,57 +130,66 @@ securitySchemes:
 
 ==== Onboard User
 
-Endpoint to onboard a new user into the system. Requires username and password.
+Endpoint to onboard a new user to the platform.
 
-Example Request:
-[source,http]
-----
+*URL*: `POST /users/onboard`
+
+*Query Parameters*:
+- `username`: The username of the new user.
+- `password`: The password for the new user.
+
+*Example Request*:
+
+....
 POST /users/onboard?username=johndoe&password=securepassword HTTP/1.1
 Host: api.example.com
 X-API-Key: yourapikey
-----
+....
 
-Example Response:
-[source,http]
-----
+*Example Response*:
+
+....
 HTTP/1.1 200 OK
-Content-Type: text/plain
-
 User onboarded successfully
-----
+....
 
-==== Assign Vehicle to User
+==== Assign Vehicle
 
-Endpoint to assign a vehicle to an existing user. Requires username, vehicle identification number (VIN), brand, and country of the vehicle.
+Endpoint to assign a vehicle to an existing user.
 
-Example Request:
-[source,http]
-----
-POST /users/assign-vehicle?username=johndoe&vin=1HGCM82633A004352&brand=Honda&country=USA HTTP/1.1
+*URL*: `POST /users/assign-vehicle`
+
+*Query Parameters*:
+- `username`: The username of the user.
+- `vin`: Vehicle Identification Number of the vehicle.
+- `brand`: Brand of the vehicle.
+- `country`: Country of vehicle registration.
+
+*Example Request*:
+
+....
+POST /users/assign-vehicle?username=johndoe&vin=123456789&brand=Toyota&country=USA HTTP/1.1
 Host: api.example.com
 X-API-Key: yourapikey
-----
+....
 
-Example Response:
-[source,http]
-----
+*Example Response*:
+
+....
 HTTP/1.1 200 OK
-Content-Type: text/plain
-
 Vehicle assigned successfully
-----
+....
 
 === Authentication Flows
 
-Clients must include an API key in the header of each request. This key must be obtained from the API provider and is required to access the API.
+API key authentication is used. Include the API key in the request header as `X-API-Key`.
 
 === Common Error Codes and Their Meanings
 
-- `400 Bad Request`: The request was unacceptable, often due to missing a required parameter.
+- `400 Bad Request`: The request was unacceptable, often due to missing a required parameter or providing an invalid parameter value.
 - `401 Unauthorized`: No valid API key provided.
-- `404 Not Found`: The requested resource doesn't exist.
-- `500 Internal Server Error`: Something went wrong on the server side.
+- `500 Internal Server Error`: Unexpected error in the server.
 
 === Rate Limiting Information
 
-The API is rate-limited to 100 requests per minute per client. Exceeding this limit will result in a `429 Too Many Requests` response.
+Rate limiting is applied to ensure fair usage of the API. Users are limited to 1000 API calls per day. Exceeding this limit will result in a `429 Too Many Requests` response.
