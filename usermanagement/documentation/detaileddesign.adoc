@@ -1,12 +1,3 @@
-=== UsermanagementApplication
-
-Annotations::
-- `@EnableFeignClients`: Enables the discovery of interfaces that declare they are Feign clients.
-- `@SpringBootApplication`: Indicates a configuration class that declares one or more `@Bean` methods and also triggers auto-configuration and component scanning.
-
-Methods::
-- `public static void main(String[] args)`: The main method that Spring Boot uses to start the application.
-
 === IdentityProviderClient
 
 Purpose::
