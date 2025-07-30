@@ -1044,6 +1044,9 @@ Make it suitable for architects and senior developers to understand the overall 
    - Foreign key relationships
    - Database constraints and indexes
 
+  After the PlantUML ER diagram, provide a detailed, human-readable description of the entities and their relationships as depicted in the diagram.
+
+
 4. **Detailed Component Interactions**
    - Controller-Service-Repository interactions
    - Data flow through layers
