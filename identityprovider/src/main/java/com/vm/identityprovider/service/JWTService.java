@@ -17,13 +17,6 @@ import java.util.Map;
 public class JWTService {
 
     private final Key secretKey;
-     private final AuditService auditService;
-    private final TokenBlacklistService tokenBlacklistService;
-
-    public JWTService(AuditService auditService, TokenBlacklistService tokenBlacklistService) {
-        this.auditService = auditService;
-        this.tokenBlacklistService = tokenBlacklistService;
-    }
 
     public JWTService() {
         secretKey = Keys.secretKeyFor(SignatureAlgorithm.HS256);
@@ -60,10 +53,5 @@ public class JWTService {
                 .parseClaimsJws(token)
                 .getBody()
                 .getSubject();
-    }
-
-    public void invalidateToken(String token) {
-        tokenBlacklistService.blacklistToken(token);
-        auditService.logEvent("Token invalidated: " + token);
     }
 }

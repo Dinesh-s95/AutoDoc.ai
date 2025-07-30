@@ -12,7 +12,7 @@ const __dirname = path.dirname(__filename);
 const CONFIG = {
   // OpenAI Configuration
   openai: {
-    apiKey: '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', // Replace with your actual API key
+    apiKey: process.env.OPENAI_API_KEY, // Replace with your actual API key
     // apiKey : '',
     // model: 'openai/gpt-3.5-turbo', // gpt-4, gpt-4-turbo or 'gpt-3.5-turbo' for faster/cheaper option
   },
