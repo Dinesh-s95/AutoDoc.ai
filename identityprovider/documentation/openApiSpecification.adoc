@@ -23,7 +23,7 @@ This OpenAPI specification is designed to be used with tools that support the Op
 openapi: 3.0.0
 info:
   title: Identity Provider API
-  version: 1.0.0
+  version: 1.0.0 
   description: API for user authentication and registration.
 servers:
   - url: https://api.example.com/v1
