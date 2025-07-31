@@ -21,7 +21,7 @@ package "Identity Provider Application" {
   [SecurityConfig] as SC
   [JwtAuthFilter] as JAF
 }
-
+ 
 database "Database" {
   [Users]
 }

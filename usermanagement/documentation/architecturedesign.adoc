@@ -16,7 +16,7 @@ package "User Management Service" {
   [UserManagementService] - [UserManagementRepository]
   [UserManagementService] --> [IdentityProviderClient]
   [UserManagementService] --> [VehicleManagementClient]
-}
+} 
 
 database "User Database" {
   [MobilityUser]

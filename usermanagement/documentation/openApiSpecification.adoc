@@ -16,7 +16,7 @@ The base URL for all API endpoints is `https://api.example.com/v1`.
 
 This document is structured according to the OpenAPI 3.0 specification. It can be imported into tools like Swagger UI, Postman, or Insomnia for interactive exploration and testing of the API endpoints.
 
-== OpenAPI 3.0 YAML Specification
+== OpenAPI 3.0 YAML Specification 
 
 [source,yaml]
 ----

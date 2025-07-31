@@ -56,6 +56,14 @@ jobs:
           echo "changed_docs<<EOF" >> $GITHUB_OUTPUT
           echo "$CHANGED_DOCS" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
+          echo "found_services=$FOUND_SERVICES" >> $GITHUB_OUTPUT
+
+      - name: Install PlantUML dependencies
+        if: steps.check-docs.outputs.has_docs == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y graphviz
+          pip install plantuml
 
       - name: Upload documentation to Confluence
         if: steps.check-docs.outputs.has_docs == 'true'
