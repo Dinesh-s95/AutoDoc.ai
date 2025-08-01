@@ -141,11 +141,56 @@ class ConfluenceUploader:
             html.append('</code></pre>')
         return '\n'.join(html)
 
-    def convert_to_html(self, content, ext):
-        if ext == '.adoc':
-            return self.convert_adoc_to_html(content)
-        elif ext == '.md':
-            return f"<pre><code>{content}</code></pre>"
+    
+    def _encode_plantuml(self, text):
+        """PlantUML's special encoding algorithm"""
+        compressed = zlib.compress(text.encode('utf-8'))
+        return base64.b64encode(compressed).decode('utf-8').translate(
+            str.maketrans('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/',
+                          '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz-_'))
+
+    def _render_plantuml(self, plantuml_code):
+        """Render PlantUML code to PNG image"""
+        try:
+            encoded = self._encode_plantuml(plantuml_code)
+            image_url = f"http://www.plantuml.com/plantuml/png/{encoded}"
+            response = requests.get(image_url)
+            response.raise_for_status()
+            return response.content
+        except Exception as e:
+            print(f"PlantUML rendering failed: {str(e)}")
+            return None
+
+    def _upload_attachment(self, page_id, filename, content):
+        """Upload file as attachment to Confluence"""
+        try:
+            url = f"{self.base_url}/content/{page_id}/child/attachment"
+            response = requests.post(
+                url,
+                headers={'X-Atlassian-Token': 'no-check'},
+                auth=self.auth,
+                files={'file': (filename, content)}
+            )
+            return response.status_code == 200
+        except Exception as e:
+            print(f"Attachment upload failed: {str(e)}")
+            return False
+
+    def convert_to_html(self, content, file_extension):
+        """Convert file content to HTML for Confluence"""
+        if file_extension.lower() == '.puml':
+            image_data = self._render_plantuml(content)
+            if image_data:
+                return '<ac:image><ri:attachment ri:filename="diagram.png" /></ac:image>'
+            return "<p>Failed to render PlantUML diagram</p>"
+        if file_extension.lower() == '.md':
+            content = content.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+            content = content.replace('\n# ', '\n<h1>').replace('\n## ', '\n<h2>').replace('\n### ', '\n<h3>')
+            content = content.replace('**', '<strong>').replace('**', '</strong>')
+            content = content.replace('\n\n', '</p><p>')
+            content = f"<p>{content}</p>"
+        elif file_extension.lower() == '.adoc':
+            content = self.convert_adoc_to_html(content)
         else:
             return f"<pre><code>{content}</code></pre>"
 
