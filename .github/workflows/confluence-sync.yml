@@ -65,19 +65,6 @@ jobs:
           sudo apt-get install -y graphviz
           pip install plantuml
 
-      - name: Setup PlantUML environment
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y graphviz plantuml
-          mkdir -p "$DOCS_FOLDER/generated_diagrams"
-
-      - name: Convert PlantUML to images
-        run: |
-          find "$DOCS_FOLDER" -name "*.puml" | while read file; do
-            echo "Converting $file to PNG..."
-            plantuml -tpng "$file" -o "$DOCS_FOLDER/generated_diagrams"
-          done
-   
       - name: Upload documentation to Confluence
         if: steps.check-docs.outputs.has_docs == 'true'
         env:
