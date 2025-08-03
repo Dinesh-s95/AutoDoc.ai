@@ -1,212 +1,137 @@
-= User Management API Documentation
+Here is the OpenAPI 3.0 specification for the provided Spring Boot application, focusing on the UserManagementController and its operations:
 
-== Introduction
-
-The User Management API provides a set of RESTful services for managing users and their vehicle assignments within a mobility platform. This API allows for operations such as user onboarding and vehicle assignment to users.
-
-=== Authentication Requirements
-
-The API uses OAuth 2.0 for securing endpoints. Clients must obtain an access token from the Identity Provider and include it in the Authorization header as a Bearer token.
-
-=== Base URL and Versioning
-
-The base URL for all API endpoints is `https://api.example.com/v1`.
-
-=== How to Use This Specification
-
-This document is structured according to the OpenAPI 3.0 specification. It can be imported into tools like Swagger UI, Postman, or Insomnia for interactive exploration and testing of the API endpoints.
-
-== OpenAPI 3.0 YAML Specification 
-
-[source,yaml]
-----
+```yaml
 openapi: 3.0.0
 info:
   title: User Management API
   version: 1.0.0
-  description: API for managing users and their vehicle assignments.
+  description: API for managing users and their vehicle assignments in the system.
 servers:
-  - url: https://api.example.com/v1
-    description: Production server
+  - url: /idp
+    description: Base path for all the endpoints
 
 paths:
-  /users/onboard:
+  /user-management/onboard:
     post:
+      tags:
+        - User Management
       summary: Onboard a new user
+      description: Registers a new user with a username and password.
       operationId: onboardUser
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UserOnboardingRequest'
+              $ref: '#/components/schemas/UserCredentials'
+            examples:
+              example1:
+                summary: Example User
+                value:
+                  username: "john_doe"
+                  password: "securePassword123"
       responses:
-        '201':
-          description: User onboarded successfully
+        '200':
+          description: User successfully onboarded
           content:
-            application/json:
+            text/plain:
               schema:
-                $ref: '#/components/schemas/UserResponse'
+                type: string
+                example: "User onboarded successfully"
         '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-  /users/assign-vehicle:
+          description: Bad request, parameters missing or invalid
+        '500':
+          description: Internal server error
+      security:
+        - bearerAuth: []
+
+  /user-management/assign-vehicle:
     post:
+      tags:
+        - User Management
       summary: Assign a vehicle to a user
+      description: Assigns a vehicle identified by VIN to a user.
       operationId: assignVehicle
-      parameters:
-        - name: username
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: vin
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: brand
-          in: query
-          required: true
-          schema:
-            type: string
-        - name: country
-          in: query
-          required: true
-          schema:
-            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VehicleAssignment'
+            examples:
+              example1:
+                summary: Example Assignment
+                value:
+                  username: "john_doe"
+                  vin: "1HGCM82633A004352"
+                  brand: "Honda"
+                  country: "USA"
       responses:
         '200':
           description: Vehicle assigned successfully
           content:
-            application/json:
+            text/plain:
               schema:
-                $ref: '#/components/schemas/VehicleAssignmentResponse'
+                type: string
+                example: "Vehicle assigned successfully"
         '400':
-          description: Bad request
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+          description: Bad request, parameters missing or invalid
+        '500':
+          description: Internal server error
+      security:
+        - bearerAuth: []
 
 components:
   schemas:
-    UserOnboardingRequest:
+    UserCredentials:
       type: object
       properties:
         username:
           type: string
+          example: "john_doe"
         password:
           type: string
-    UserResponse:
-      type: object
-      properties:
-        id:
-          type: string
-        username:
-          type: string
-        status:
-          type: string
-    VehicleAssignmentResponse:
+          format: password
+          example: "securePassword123"
+      required:
+        - username
+        - password
+
+    VehicleAssignment:
       type: object
       properties:
         username:
           type: string
+          example: "john_doe"
         vin:
           type: string
-        status:
+          example: "1HGCM82633A004352"
+        brand:
           type: string
-    Error:
-      type: object
-      properties:
-        code:
-          type: integer
-        message:
+          example: "Honda"
+        country:
           type: string
-security:
-  - bearerAuth: []
+          example: "USA"
+      required:
+        - username
+        - vin
+        - brand
+        - country
 
 securitySchemes:
   bearerAuth:
     type: http
     scheme: bearer
     bearerFormat: JWT
-----
 
-== API Documentation
+security:
+  - bearerAuth: []
+```
 
-=== Endpoint Descriptions and Usage Examples
+### Explanation:
+- **Overview Section**: Provides basic information about the API including title, version, and a brief description.
+- **Paths**: Defined for each endpoint derived from the methods in the `UserManagementController`. Each path includes method operations (POST in this case), a summary, description, operation ID, request body schema, example payloads, and possible responses.
+- **Components**: Defines JSON schemas for the request bodies (`UserCredentials` and `VehicleAssignment`) used in the endpoints.
+- **Security**: Includes a JWT-based security scheme for the API, assuming JWT is used for authentication as per the initial requirements.
 
-==== Onboard User
-
-Endpoint to onboard a new user. Requires username and password.
-
-Example Request:
-[source,json]
-----
-POST /users/onboard
-{
-  "username": "newuser",
-  "password": "password123"
-}
-----
-
-Example Response:
-[source,json]
-----
-{
-  "id": "1",
-  "username": "newuser",
-  "status": "active"
-}
-----
-
-==== Assign Vehicle to User
-
-Endpoint to assign a vehicle to an existing user. Requires username, vehicle identification number (VIN), brand, and country.
-
-Example Request:
-[source,json]
-----
-POST /users/assign-vehicle?username=user1&vin=12345&brand=Toyota&country=USA
-----
-
-Example Response:
-[source,json]
-----
-{
-  "username": "user1",
-  "vin": "12345",
-  "status": "assigned"
-}
-----
-
-=== Authentication Flows
-
-Clients must authenticate using OAuth 2.0. Obtain an access token from the Identity Provider and include it as a Bearer token in the Authorization header.
-
-=== Common Error Codes and Their Meanings
-
-- `400` - Bad request: The request was unacceptable, often due to missing a required parameter.
-- `401` - Unauthorized: No valid authentication credentials for the target resource.
-- `404` - Not Found: The requested resource does not exist.
-- `500` - Internal Server Error: An error occurred on the server side.
-
-=== Rate Limiting Information
-
-The API is subject to rate limiting to ensure fair usage. Clients are limited to 100 requests per minute. Exceeding this limit will result in a `429 Too Many Requests` response.
+This specification should be validatable in tools like Swagger Editor and can be directly used in API Gateways or imported into tools like Postman for testing.

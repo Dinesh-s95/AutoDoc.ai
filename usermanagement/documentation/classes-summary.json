@@ -49,11 +49,57 @@
       "RestController"
     ],
     "methods": [
-      "public String assignVehicle(@RequestParam String username, @RequestParam String vin, @RequestParam String brand, @RequestParam String country)",
-      "public String onboardUser()",
-      "public String onboardUser(@RequestParam String username, @RequestParam String password)"
+      "@PostMapping(\"/assign-vehicle\") public String assignVehicle(@RequestParam String username, @RequestParam String vin, @RequestParam String brand, @RequestParam String country)",
+      "@PostMapping(\"/onboard\") public String onboardUser(@RequestParam String username, @RequestParam String password)"
     ],
-    "endpoints": [],
+    "endpoints": [
+      {
+        "annotation": "PostMapping",
+        "method": "@PostMapping(\"/onboard\") public String onboardUser(@RequestParam String username, @RequestParam String password)",
+        "url": "/user-management/onboard",
+        "inputs": [
+          {
+            "annotation": "RequestParam",
+            "type": "String",
+            "name": "username"
+          },
+          {
+            "annotation": "RequestParam",
+            "type": "String",
+            "name": "password"
+          }
+        ],
+        "output": "String"
+      },
+      {
+        "annotation": "PostMapping",
+        "method": "@PostMapping(\"/assign-vehicle\") public String assignVehicle(@RequestParam String username, @RequestParam String vin, @RequestParam String brand, @RequestParam String country)",
+        "url": "/user-management/assign-vehicle",
+        "inputs": [
+          {
+            "annotation": "RequestParam",
+            "type": "String",
+            "name": "username"
+          },
+          {
+            "annotation": "RequestParam",
+            "type": "String",
+            "name": "vin"
+          },
+          {
+            "annotation": "RequestParam",
+            "type": "String",
+            "name": "brand"
+          },
+          {
+            "annotation": "RequestParam",
+            "type": "String",
+            "name": "country"
+          }
+        ],
+        "output": "String"
+      }
+    ],
     "fields": [
       "service : UserManagementService"
     ],
