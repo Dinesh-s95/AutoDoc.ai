@@ -31,11 +31,6 @@ public class UserController {
         return "Welcome to proto-calls";
     }
 
-    @GetMapping("/homeee")
-    public String greet2() {
-        return "Welcome to proto-calls2";
-    }
-
     @PostMapping("/register")
     public Users registerUser(@RequestBody final Users user) {
         return userService.register(user);
