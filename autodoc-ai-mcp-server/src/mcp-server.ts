@@ -493,11 +493,13 @@ class JavaDocumentationMCPServer {
       return true;
     }
 
-    // If classes-summary.json was just regenerated due to Java code changes, we need to regenerate docs
+    // If classes-summary.json was just regenerated, we definitely need to regenerate docs
     if (classesSummaryWasRegenerated) {
       this.logInfo('🔄 classes-summary.json was just regenerated due to Java code changes, documentation needs update');
       return true;
     }
+
+    const classesSummaryPath = path.join(this.config.outputPath, 'classes-summary.json');
     
     // Check if documentation files exist
     const docFiles = [
@@ -522,11 +524,28 @@ class JavaDocumentationMCPServer {
         return true;
       }
 
-      // If classes-summary.json was NOT regenerated (no Java changes) and all doc files exist,
-      // then documentation is up-to-date regardless of file timestamps
-      this.logInfo('✅ Documentation is up-to-date (No Java code changes detected since last generation)');
-      return false;
+      // Get classes-summary.json modification time
+      const summaryStats = await fs.stat(classesSummaryPath);
       
+      // Get the oldest documentation file time
+      let oldestDocTime = new Date();
+      let oldestDocFile = '';
+      for (const docFile of docFiles) {
+        const docStats = await fs.stat(docFile);
+        if (docStats.mtime < oldestDocTime) {
+          oldestDocTime = docStats.mtime;
+          oldestDocFile = path.basename(docFile);
+        }
+      }
+
+      // If classes-summary.json is newer than documentation files, regenerate
+      if (summaryStats.mtime > oldestDocTime) {
+        this.logInfo('🔄 classes-summary.json is newer than documentation, regeneration needed');
+        return true;
+      } else {
+        this.logInfo('\n✅ Documentation is up-to-date (No Java code changes detected since last generation)');
+        return false;
+      }
     } catch (error) {
       this.logError('📄 Error checking documentation status, will generate documentation', error);
       return true;
@@ -832,7 +851,7 @@ class JavaDocumentationMCPServer {
   private parseJavaClass(content: string): ClassSummary | null {
     const annotations: string[] = [];
     const methods: string[] = [];
-    const endpoints: string[] = [];
+    const endpoints: any[] = [];
     const fields: string[] = [];
     let isEntity = false;
     let isRestController = false;
@@ -852,21 +871,72 @@ class JavaDocumentationMCPServer {
         if (!annotations.includes(cleanAnnotation)) {
           annotations.push(cleanAnnotation);
         }
-        
         if (cleanAnnotation === 'Entity') isEntity = true;
         if (cleanAnnotation === 'RestController') isRestController = true;
       });
     }
 
+    // Parse class-level @RequestMapping (base path)
+    let basePath = '';
+    const classMappingMatch = content.match(/@RequestMapping\(([^)]*)\)/);
+    if (classMappingMatch) {
+      const pathMatch = classMappingMatch[1].match(/value\s*=\s*"([^"]+)"|"([^"]+)"/);
+      basePath = pathMatch ? (pathMatch[1] || pathMatch[2]) : '';
+    }
+
     // Parse methods
-    const methodMatches = content.match(/(?:public|private|protected)\s+[\w<>?,\s\[\]]+\s+\w+\s*\([^)]*\)(?:\s+throws\s+[\w,\s]+)?/g);
-    if (methodMatches) {
-      methodMatches.forEach(method => {
-        const cleanMethod = method.trim().replace(/\s+/g, ' ');
-        if (!methods.includes(cleanMethod)) {
-          methods.push(cleanMethod);
+    const methodRegex = /((?:@[\w]+(?:\([^)]*\))?\s*)*)(?:public|private|protected)\s+([\w<>?,\s\[\]]+)\s+(\w+)\s*\(([^)]*)\)(?:\s+throws\s+[\w,\s]+)?/g;
+    let methodMatch;
+    while ((methodMatch = methodRegex.exec(content)) !== null) {
+      const annotationBlock = methodMatch[1];
+      const returnType = methodMatch[2].trim();
+      const methodName = methodMatch[3];
+      const params = methodMatch[4];
+      const methodSignature = content.substring(methodMatch.index, methodRegex.lastIndex).split('{')[0].trim();
+      methods.push(methodSignature.replace(/\s+/g, ' '));
+
+      // Find mapping annotation and path
+      const mappingAnnotationMatch = annotationBlock.match(/@(GetMapping|PostMapping|PutMapping|DeleteMapping|RequestMapping)(\(([^)]*)\))?/);
+      if (mappingAnnotationMatch) {
+        const httpMethod = mappingAnnotationMatch[1];
+        let methodPath = '';
+        if (mappingAnnotationMatch[3]) {
+          const pathMatch = mappingAnnotationMatch[3].match(/value\s*=\s*"([^"]+)"|"([^"]+)"/);
+          methodPath = pathMatch ? (pathMatch[1] || pathMatch[2]) : '';
         }
-      });
+        // Combine basePath and methodPath
+        let url = '';
+        if (basePath && methodPath) {
+          url = `${basePath}${methodPath.startsWith('/') ? '' : '/'}${methodPath}`;
+        } else if (basePath) {
+          url = basePath;
+        } else if (methodPath) {
+          url = methodPath;
+        }
+
+        // Parse input parameters
+        const inputs: any[] = [];
+        if (params.trim()) {
+          params.split(',').forEach(param => {
+            const paramMatch = param.trim().match(/(@\w+)?\s*([\w<>\[\]]+)\s+(\w+)/);
+            if (paramMatch) {
+              inputs.push({
+                annotation: paramMatch[1] ? paramMatch[1].replace('@', '') : '',
+                type: paramMatch[2],
+                name: paramMatch[3]
+              });
+            }
+          });
+        }
+
+        endpoints.push({
+          annotation: httpMethod,
+          method: methodSignature.replace(/\s+/g, ' '),
+          url,
+          inputs,
+          output: returnType
+        });
+      }
     }
 
     // Parse fields
@@ -885,33 +955,11 @@ class JavaDocumentationMCPServer {
       });
     }
 
-    // Parse endpoints (basic extraction)
-    // Parse endpoints (basic extraction)
-const mappingMatches = content.match(/@(GetMapping|PostMapping|PutMapping|DeleteMapping|RequestMapping)[^}]*/g);
-
-if (mappingMatches) {
-  mappingMatches.forEach(mapping => {
-    const methodNameMatch = content.match(
-      new RegExp(mapping.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '.*?public.*?(\\w+)\\s*\\(')
-    );
-
-    if (methodNameMatch) {
-      const mappingType = mapping.match(/@(\w+)/)?.[1] || 'Mapping';
-      const methodName = methodNameMatch[1];
-      const endpointEntry = `${mappingType} -> ${methodName}`;
-      if (!endpoints.includes(endpointEntry)) {
-        endpoints.push(endpointEntry);
-      }
-    }
-  });
-}
-
-
     return {
       className,
       annotations: annotations.sort(),
       methods: methods.sort(),
-      endpoints: endpoints.sort(),
+      endpoints,
       fields: fields.sort(),
       isEntity,
       isRestController,
@@ -1085,49 +1133,61 @@ Make it suitable for developers to understand the detailed implementation design
 
     // Extract REST controllers and their endpoints
     const restControllers = classesSummary.filter(cls => cls.isRestController);
+    
+    const prompt = `You are given a list of Java classes extracted from a Spring Boot application, particularly REST controllers and their metadata. Based on this, generate a production-ready OpenAPI 3.0 specification in YAML format.
 
-    const prompt = `Based on the following Java REST controller classes, generate a comprehensive OpenAPI Specification document that includes:
+## Requirements:
 
-1. **Introduction Section**
-   - Brief overview of the API
-   - Authentication requirements
-   - Base URL and versioning
-   - How to use this specification
+1. **Overview Section**
+   - API title and version
+   - Base path (e.g., /idp)
+   - Authentication method used (e.g., JWT Bearer token if present)
+   - General usage guidance
 
-2. **Complete OpenAPI 3.0 YAML Specification**
-   - All REST endpoints with their HTTP methods
-   - Request/response schemas
-   - Path parameters and query parameters
-   - Request body specifications
-   - Response body specifications with status codes
-   - Authentication/security requirements
-   - Error response schemas
+2. **OpenAPI Specification**
+   - For each REST controller:
+     - Extract and document all HTTP endpoints from the methods
+     - Use class names and method names to infer logical groupings and operation summaries
+     - If annotations like '@RequestMapping', '@GetMapping', '@PostMapping' are present, derive the full endpoint paths and HTTP methods
+   - Define request and response bodies using 'schemas'
+     - Infer schema names from method parameters (e.g., 'Users')
+     - Include example payloads when possible
+   - Include response status codes (e.g., 200 for success, 401 for unauthorized, etc.)
+   - Document possible error responses
 
-3. **API Documentation**
-   - Endpoint descriptions and usage examples
-   - Authentication flows
-   - Common error codes and their meanings
-   - Rate limiting information (if applicable)
+3. **Security**
+   - If a JWTService is used, include a JWT-based security scheme
 
-Here are the REST Controller classes:
+4. **Additional Docs**
+   - For each endpoint, add a usage description inferred from method name and parameters
+   - Add curl examples for major operations
+   - Document possible error codes (e.g., 401, 400)
+
+---
+
+Here are the REST controller classes:
 
 \`\`\`json
 ${JSON.stringify(restControllers, null, 2)}
 \`\`\`
 
-All classes for context:
+Here is the full list of all classes (for context, including DTOs/entities):
 
 \`\`\`json
 ${JSON.stringify(classesSummary, null, 2)}
 \`\`\`
 
-Please generate this as a ${outputFormat.toUpperCase()} document with:
-- A complete, valid OpenAPI 3.0 YAML specification
-- Detailed endpoint documentation
-- Request/response examples
-- Proper schema definitions
+---
 
-The YAML should be production-ready and importable into tools like Swagger UI, Postman, or Insomnia.`;
+Generate the OpenAPI spec in YAML format. The output must be:
+- Complete
+- Validatable in Swagger Editor
+- Ready to be used in API Gateway or Postman collections
+- Human-readable with proper indentation and grouping
+- Organized by tags (based on controller names or logical domains)
+- Include JSON schema definitions under \`components.schemas\`
+`;
+
 
     try {
       const response = await this.openai.chat.completions.create({
