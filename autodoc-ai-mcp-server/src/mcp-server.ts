@@ -493,14 +493,12 @@ class JavaDocumentationMCPServer {
       return true;
     }
 
-    // If classes-summary.json was just regenerated, we definitely need to regenerate docs
+    // If classes-summary.json was just regenerated due to code changes, regenerate docs
     if (classesSummaryWasRegenerated) {
-      this.logInfo('🔄 classes-summary.json was just regenerated due to Java code changes, documentation needs update');
+      this.logInfo('🔄 Java code changed, documentation needs update');
       return true;
     }
 
-    const classesSummaryPath = path.join(this.config.outputPath, 'classes-summary.json');
-    
     // Check if documentation files exist
     const docFiles = [
       path.join(this.config.outputPath, `architecturedesign.${this.config.docFormat}`),
@@ -524,28 +522,9 @@ class JavaDocumentationMCPServer {
         return true;
       }
 
-      // Get classes-summary.json modification time
-      const summaryStats = await fs.stat(classesSummaryPath);
-      
-      // Get the oldest documentation file time
-      let oldestDocTime = new Date();
-      let oldestDocFile = '';
-      for (const docFile of docFiles) {
-        const docStats = await fs.stat(docFile);
-        if (docStats.mtime < oldestDocTime) {
-          oldestDocTime = docStats.mtime;
-          oldestDocFile = path.basename(docFile);
-        }
-      }
-
-      // If classes-summary.json is newer than documentation files, regenerate
-      if (summaryStats.mtime > oldestDocTime) {
-        this.logInfo('🔄 classes-summary.json is newer than documentation, regeneration needed');
-        return true;
-      } else {
-        this.logInfo('\n✅ Documentation is up-to-date (No Java code changes detected since last generation)');
-        return false;
-      }
+      // If we reach here, all docs exist and classesSummaryWasRegenerated is false
+      this.logInfo('\n✅ Documentation is up-to-date (No Java code changes detected since last generation)');
+      return false;
     } catch (error) {
       this.logError('📄 Error checking documentation status, will generate documentation', error);
       return true;
