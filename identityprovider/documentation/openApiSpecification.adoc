@@ -1,34 +1,70 @@
-= Identity Provider API Documentation
+Here is the OpenAPI 3.0 specification in YAML format based on the provided Java Spring Boot application details:
 
-== Introduction
-
-The Identity Provider API offers a suite of services to handle user authentication and registration processes. This API is designed to provide secure access to applications by validating user credentials and providing tokens for session management.
-
-=== Authentication Requirements
-
-The API uses JWT (JSON Web Tokens) for securing the endpoints. Clients must authenticate by providing a valid JWT in the `Authorization` header of their HTTP requests.
-
-=== Base URL and Versioning
-
-The base URL for all API endpoints is `https://api.example.com/v1`. This documentation refers to version 1 of the API.
-
-=== How to Use This Specification
-
-This OpenAPI specification is designed to be used with tools that support the OpenAPI 3.0 format, such as Swagger UI, Postman, and Insomnia. You can import this specification into any of these tools to understand the API's capabilities, test endpoints, and generate client code.
-
-== OpenAPI 3.0 YAML Specification
-
-[source,yaml]
-----
+```yaml
 openapi: 3.0.0
 info:
   title: Identity Provider API
-  version: 1.0.0 
-  description: API for user authentication and registration.
+  version: 1.0.0
+  description: API for managing user authentication and registration
 servers:
-  - url: https://api.example.com/v1
-    description: Production server
-
+  - url: /idp
+paths:
+  /users/home:
+    get:
+      tags:
+        - User Operations
+      summary: Greet the user
+      operationId: greetUser
+      responses:
+        '200':
+          description: Greeting message returned
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: Hello, user!
+  /users/register:
+    post:
+      tags:
+        - User Operations
+      summary: Register a new user
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Users'
+      responses:
+        '200':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Users'
+        '400':
+          description: Invalid input
+  /users/login:
+    post:
+      tags:
+        - User Operations
+      summary: Login for existing user
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Users'
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Unauthorized
 components:
   schemas:
     Users:
@@ -37,20 +73,13 @@ components:
         userId:
           type: integer
           format: int64
+          example: 1
         username:
           type: string
+          example: user@example.com
         password:
           type: string
-      required:
-        - username
-        - password
-    AuthRequest:
-      type: object
-      properties:
-        username:
-          type: string
-        password:
-          type: string
+          example: pass1234
       required:
         - username
         - password
@@ -59,109 +88,21 @@ components:
       properties:
         token:
           type: string
-      required:
-        - token
-
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
 security:
   - jwtAuth: []
+components:
+  securitySchemes:
+    jwtAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+```
 
-securitySchemes:
-  jwtAuth:
-    type: http
-    scheme: bearer
-    bearerFormat: JWT
+### Explanation:
+- **Overview Section**: Provides basic information about the API including the title, version, and a brief description.
+- **Paths**: Defined for each endpoint derived from the controller methods. Includes HTTP methods, request bodies, and responses.
+- **Components**: Defines reusable schemas for request and response bodies. `Users` and `AuthResponse` are included as examples.
+- **Security**: Includes a JWT-based security scheme for endpoints that require authentication.
 
-paths:
-  /login:
-    post:
-      summary: Authenticate user and return JWT
-      operationId: loginUser
-      tags:
-        - Authentication
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/AuthRequest'
-      responses:
-        '200':
-          description: Authentication successful
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AuthResponse'
-        '401':
-          description: Authentication failed
-  /register:
-    post:
-      summary: Register a new user
-      operationId: registerUser
-      tags:
-        - User Management
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Users'
-      responses:
-        '201':
-          description: User registered successfully
-        '400':
-          description: Invalid input data
-----
-
-== API Documentation
-
-=== Authentication
-
-Authentication is performed via the `/login` endpoint. Upon successful authentication, a JWT is returned which must be included in the `Authorization` header of subsequent requests.
-
-.Example: Login Request
-[source,json]
-----
-{
-  "username": "john.doe",
-  "password": "password123"
-}
-----
-
-.Example: Login Response
-[source,json]
-----
-{
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-}
-----
-
-=== User Registration
-
-The `/register` endpoint allows new users to register. This endpoint requires a JSON payload with user details.
-
-.Example: Register Request
-[source,json]
-----
-{
-  "username": "new.user",
-  "password": "newpassword123"
-}
-----
-
-.Example: Register Response
-[source,json]
-----
-{
-  "userId": 101,
-  "username": "new.user"
-}
-----
-
-=== Common Error Codes
-
-- `400 Bad Request`: The request was unacceptable, often due to missing a required parameter.
-- `401 Unauthorized`: No valid API key provided.
-- `404 Not Found`: The requested resource doesn't exist.
-- `500 Internal Server Error`: Something went wrong on the server side.
-
-This comprehensive documentation and YAML specification should provide a robust foundation for integrating with the Identity Provider API.
+This specification is ready to be imported into tools like Swagger Editor for validation, Postman for API testing, or any API Gateway that supports OpenAPI specifications. It is structured to be human-readable and logically grouped by user operations.

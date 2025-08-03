@@ -1,145 +1,143 @@
-= Identity Provider Service Architecture Design Document
+= Identity Provider System Architecture Design
 
-== Version Details
-- *Version*: 1.0
-- *Date*: 2023-12-01
-- *Author*: [Your Name]
+This document provides a comprehensive architecture design for the Identity Provider system, developed using Java Spring Boot. The system is designed to manage user authentication and authorization through a secure and scalable web service.
 
 == 1. Service Architecture Overview
 
-=== 1.1 High-level System Architecture Diagram
+=== High-level System Architecture Diagram
 
-[plantuml, "system-architecture", png]
-....
+[plantuml, "system-architecture-diagram", png]
+----
 @startuml
 package "Identity Provider Application" {
   [IdentityproviderApplication] as App
-  [UserController] as UC
-  [UserService] as US
+  [UserController] as Controller
+  [UserService] as Service
+  [UserRepository] as Repository
   [JWTService] as JWT
-  [UserRepository] as UR
-  [SecurityConfig] as SC
-  [JwtAuthFilter] as JAF
-}
- 
-database "Database" {
-  [Users]
+  [SecurityConfig] as Security
+  [JwtAuthFilter] as Filter
+  database "Database" {
+    [Users]
+  }
 }
 
 node "External Systems" {
-  [Authentication Provider]
+  [Authentication Client]
 }
 
-App --> UC : uses
-UC --> US : uses
-US --> UR : uses
-UC --> JWT : uses
-SC --> JAF : configures
-SC --> US : configures
-UR --> [Users] : accesses
-[Authentication Provider] --> SC : authenticates
+App --> Controller
+Controller --> Service
+Service --> Repository
+Repository --> Users
+Controller --> JWT
+JWT --> Controller
+Security --> Filter
+Filter --> Controller
+
+Authentication Client --> Controller : uses
+
 @enduml
-....
+----
 
-=== 1.2 External System Connections and Integrations
+=== External System Connections and Integrations
 
-The system integrates with an external *Authentication Provider* for validating user credentials and managing security tokens.
+The Identity Provider system integrates with external systems primarily for user authentication requests. These systems interact with the UserController to initiate login and registration processes.
 
-=== 1.3 Component Interaction Overview
+=== Component Interaction Overview
 
-Components interact primarily through service invocations. `UserController` manages incoming HTTP requests and communicates with `UserService` for user operations and `JWTService` for token operations. `UserService` accesses `UserRepository` for database operations.
+The system components interact as follows:
+- **UserController** handles incoming HTTP requests, interacting with UserService for user data operations and JWTService for token operations.
+- **UserService** performs business logic operations related to user data and interacts with UserRepository to retrieve or update user details in the database.
+- **JWTService** is responsible for generating and validating JWT tokens used for user authentication.
+- **SecurityConfig** configures security aspects of the application, including URL access patterns and security filters.
+- **JwtAuthFilter** is a security filter that intercepts requests to check for valid JWT tokens.
 
-=== 1.4 Technology Stack and Frameworks Used
+=== Technology Stack and Frameworks Used
 
-- **Programming Language**: Java
-- **Framework**: Spring Boot
-- **Security**: Spring Security, JWT
-- **Database**: MySQL
-- **Build Tool**: Maven
+- **Spring Boot**: Framework for building stand-alone, production-grade Spring based Applications.
+- **Spring Security**: Provides authentication and authorization support.
+- **Spring Data JPA**: Simplifies data access operations.
+- **JWT (JSON Web Token)**: Used for securely transmitting information between parties as a JSON object.
+- **MySQL**: Database for storing user data.
+- **JUnit**: For unit testing of application components.
 
 == 2. Component Description
 
-=== 2.1 IdentityproviderApplication
+=== IdentityproviderApplication
 
-- *Responsibility*: Bootstraps the Spring Boot application.
-- *Role*: Entry point of the application.
+**Responsibility**: Bootstraps the Spring Boot application.
 
-=== 2.2 JwtAuthFilter
+**Role**: Entry point of the application, responsible for setting up the Spring ApplicationContext and launching the application.
 
-- *Responsibility*: Intercepts HTTP requests to validate JWT tokens.
-- *Role*: Security filter to ensure that only authenticated requests proceed.
-- *Interaction*: Uses `UserService` to load user details during authentication.
+=== UserController
 
-=== 2.3 SecurityConfig
+**Responsibility**: Handles all user-related HTTP requests.
 
-- *Responsibility*: Configures security settings for the application.
-- *Role*: Defines beans for authentication and authorization mechanisms.
-- *Interaction*: Sets up `JwtAuthFilter` and configures `UserDetailsService`.
+**Role**: Acts as a controller to manage registration, login, and user greeting. It interacts with UserService for business operations and JWTService for authentication token operations.
 
-=== 2.4 UserController
+=== UserService
 
-- *Responsibility*: Handles all user-related HTTP requests.
-- *Role*: Controller to manage login and registration endpoints.
-- *Interaction*: Uses `AuthenticationManager` and `JWTService` for authenticating users and managing JWT tokens, respectively.
+**Responsibility**: Manages business logic for user operations.
 
-=== 2.5 Users
+**Role**: Communicates with UserRepository to access and modify user data. It also handles user authentication and registration logic.
 
-- *Responsibility*: Represents the user entity in the database.
-- *Role*: Domain model for user data.
+=== UserRepository
 
-=== 2.6 UserRepository
+**Responsibility**: Interface for database operations related to user data.
 
-- *Responsibility*: Interface for database operations related to `Users`.
-- *Role*: Spring Data repository that abstracts CRUD operations.
+**Role**: Extends JpaRepository to interact with the database and perform CRUD operations on the Users entity.
 
-=== 2.7 JWTService
+=== JWTService
 
-- *Responsibility*: Manages operations related to JWT including token generation and validation.
-- *Role*: Service layer component for encapsulating JWT handling.
+**Responsibility**: Manages JWT token operations.
 
-=== 2.8 UserService
+**Role**: Generates, extracts, and validates JWT tokens to support authentication processes.
 
-- *Responsibility*: Manages business logic related to users.
-- *Role*: Service layer component that interacts with `UserRepository` and provides user details to Spring Security.
+=== SecurityConfig
+
+**Responsibility**: Configures security settings for the application.
+
+**Role**: Sets up authentication manager, authentication provider, and security filters to secure the application.
+
+=== JwtAuthFilter
+
+**Responsibility**: Filters incoming requests for valid JWT tokens.
+
+**Role**: Intercepts HTTP requests to check for the presence and validity of authentication tokens.
 
 == 3. Infrastructure Architecture
 
-=== 3.1 Deployment Architecture
+=== Deployment Architecture
 
-The application is containerized using Docker and deployed on Kubernetes for orchestration. This setup provides scalability and resilience.
+The application is packaged as a jar and can be deployed on any Java-capable server environment, including cloud platforms like AWS or Azure.
 
-=== 3.2 Database Architecture
+=== Database Architecture
 
-The application uses MySQL as its relational database, with a single table `Users` that stores user credentials and information.
+The system uses MySQL as the relational database to store user data, including usernames and encrypted passwords.
 
-=== 3.3 Security Architecture
+=== Security Architecture
 
-Security is managed using Spring Security with JWT for stateless authentication. HTTPS is enforced for all communications.
+Security is enforced using Spring Security, which handles authentication and authorization. Passwords are stored in an encrypted format using BCrypt.
 
-=== 3.4 Network Architecture
+=== Network Architecture
 
-The application is deployed within a VPC with restricted access to the database and external interfaces. Only specific ports are exposed for HTTP and HTTPS traffic.
+The application is accessible over HTTP/HTTPS. Security measures such as firewalls and SSL/TLS should be configured to protect data in transit.
 
 == 4. System Context
 
-=== 4.1 External Systems and Their Interfaces
+=== External Systems and Their Interfaces
 
-The system interfaces with an external *Authentication Provider* which supports OAuth2 for user authentication.
+The Identity Provider system interfaces with external client applications primarily through REST API endpoints exposed by UserController.
 
-=== 4.2 Data Flow Between Systems
+=== Data Flow Between Systems
 
-User credentials are verified against the external Authentication Provider during the login process. Upon successful authentication, a JWT is generated and returned to the user.
+External systems interact with the Identity Provider system by sending HTTP requests to the UserController endpoints. UserController uses UserService and JWTService to process these requests and respond appropriately.
 
-=== 4.3 Authentication and Authorization Flows at System Level
+=== Authentication and Authorization Flows at System Level
 
-Authentication is handled via JWT tokens. The `JwtAuthFilter` checks for the presence of a valid JWT in the HTTP request headers. If the token is valid, the request is allowed to proceed; otherwise, it is rejected.
+Authentication is performed using JWT tokens. Upon a successful login, a JWT token is generated and returned to the client, which must include it in subsequent requests to access protected resources.
 
-== Document Revision History
+== Conclusion
 
-|===
-| Version | Date       | Description
-
-| 1.0     | 2023-12-01 | Initial release
-|===
-
-This document provides a comprehensive overview of the architecture for the Identity Provider application, designed for use by architects and senior developers to understand and maintain the system.
+This document outlines the architecture of the Identity Provider system, detailing component responsibilities, interactions, and the overall infrastructure setup. This architecture is designed to ensure a secure, scalable, and maintainable system for managing user authentication and authorization.
