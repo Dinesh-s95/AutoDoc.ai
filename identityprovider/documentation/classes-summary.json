@@ -55,25 +55,16 @@
     "className": "UserController",
     "annotations": [
       "Autowired",
-      "GetMapping",
       "PostMapping",
       "RequestBody",
       "RequestMapping",
       "RestController"
     ],
     "methods": [
-      "@GetMapping(\"/home\") public String greet()",
       "@PostMapping(\"/login\") public ResponseEntity<Object> login(@RequestBody final Users user)",
       "@PostMapping(\"/register\") public Users registerUser(@RequestBody final Users user)"
     ],
     "endpoints": [
-      {
-        "annotation": "GetMapping",
-        "method": "@GetMapping(\"/home\") public String greet()",
-        "url": "/idp/users/home",
-        "inputs": [],
-        "output": "String"
-      },
       {
         "annotation": "PostMapping",
         "method": "@PostMapping(\"/register\") public Users registerUser(@RequestBody final Users user)",
