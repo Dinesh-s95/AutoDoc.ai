@@ -1,13 +1,11 @@
 = Enrollment System Architecture Design
 
-This document provides a comprehensive architecture design for the Enrollment System developed using Java Spring Boot. The system is designed to manage user enrollments and integrates with external user management services.
-
-== Service Architecture Overview
+== 1. Service Architecture Overview
 
 === High-level System Architecture Diagram
 
-[plantuml, diagram-arch, png]
-....
+[plantuml, diagram-architecture, png]
+----
 @startuml
 package "Enrollment System" {
   [EnrollmentApplication] as App
@@ -23,98 +21,105 @@ package "Enrollment System" {
 }
 
 package "External Systems" {
-  [UserManagementClient] as UserClient
+  [User Management System] as UserSys
 }
 
-Service --> UserClient
+[UserManagementClient] --> UserSys
+
+UserSys ..> Service : Uses
 
 @enduml
-....
+----
 
 === External System Connections and Integrations
 
-The Enrollment System integrates with an external user management service through the `UserManagementClient`, which is implemented using Feign for REST client capabilities.
+The Enrollment System integrates with the following external systems:
+- **User Management System**: This system is accessed via `UserManagementClient` using Feign for RESTful communication. It manages user-related operations outside the Enrollment System.
 
 === Component Interaction Overview
 
-The `EnrollmentController` receives HTTP requests and interacts with the `EnrollmentService` to process business logic. The `EnrollmentService` uses `EnrollmentRepository` for data persistence and interacts with `UserManagementClient` to fetch and validate user data from external services.
+- **EnrollmentApplication**: Bootstraps the Spring Boot application.
+- **EnrollmentController**: Handles HTTP requests and communicates with the `EnrollmentService`.
+- **EnrollmentService**: Contains business logic and interacts with both `EnrollmentRepository` for data persistence and `UserManagementClient` for external user management operations.
+- **EnrollmentRepository**: Manages database interactions for `Enrollment` entities.
+- **UserManagementClient**: Facilitates communication with the external User Management System.
 
 === Technology Stack and Frameworks Used
 
-* Java 11
-* Spring Boot 2.5.x
-* Spring Data JPA
-* Spring Cloud OpenFeign
-* H2 Database for development
-* PostgreSQL for production
-* Maven for dependency management
+- **Spring Boot**: Framework for creating stand-alone, production-grade Spring based Applications.
+- **Spring Data JPA**: Provides repository support for JPA entities.
+- **Feign**: A declarative web service client for making HTTP requests to external services.
+- **H2 Database**: In-memory database for rapid prototyping and testing.
+- **JUnit**: Framework for writing and running repeatable tests.
 
-== Component Description
+== 2. Component Description
 
 === EnrollmentApplication
 
-* **Responsibility**: Bootstraps the Spring Boot application.
-* **Role**: Entry point of the application.
-* **Interaction**: Initiates the `EnrollmentController`.
+- **Responsibility**: Initializes and runs the Spring Boot application.
+- **Role**: Entry point of the application.
+- **Interactions**: Launches `EnrollmentController`.
 
 === EnrollmentController
 
-* **Responsibility**: Handles incoming HTTP requests.
-* **Role**: REST controller to manage enrollment operations.
-* **Interaction**: Uses `EnrollmentService` to perform business operations.
+- **Responsibility**: Manages incoming HTTP requests and delegates operations to `EnrollmentService`.
+- **Role**: REST controller that handles endpoint mappings.
+- **Interactions**: Communicates directly with `EnrollmentService`.
 
 === EnrollmentService
 
-* **Responsibility**: Contains business logic for enrollment operations.
-* **Role**: Service layer to abstract business logic from web layer.
-* **Interaction**: Communicates with `EnrollmentRepository` for database operations and `UserManagementClient` for external user validations.
+- **Responsibility**: Handles the business logic of the application.
+- **Role**: Service layer that processes business rules and interacts with both the repository and external services.
+- **Interactions**: Uses `EnrollmentRepository` for data persistence and `UserManagementClient` for external communications.
 
 === EnrollmentRepository
 
-* **Responsibility**: Manages database interactions.
-* **Role**: Repository layer using Spring Data JPA.
-* **Interaction**: Interacts with the database to perform CRUD operations on `Enrollment` entities.
+- **Responsibility**: Manages the persistence layer, specifically for `Enrollment` entities.
+- **Role**: Interface that extends Spring Data JPA's JpaRepository.
+- **Interactions**: Interacts with the database to fetch and store `Enrollment` data.
 
 === UserManagementClient
 
-* **Responsibility**: Interacts with external user management services.
-* **Role**: External service client created with Feign.
-* **Interaction**: Called by `EnrollmentService` for external user data.
+- **Responsibility**: Communicates with the external User Management System.
+- **Role**: Feign client that abstracts the complexity of HTTP calls.
+- **Interactions**: Used by `EnrollmentService` to fetch or manipulate user data externally.
 
-== Infrastructure Architecture
+== 3. Infrastructure Architecture
 
 === Deployment Architecture
 
-* **Description**: The application is containerized using Docker and deployed on Kubernetes clusters for scalability and management.
-* **Components**: Docker, Kubernetes.
+- **Application**: Deployed as a monolithic Spring Boot application.
+- **Database**: Uses an embedded H2 database for development and testing.
 
 === Database Architecture
 
-* **Description**: Uses PostgreSQL in production with a fallback to H2 database in development environments.
-* **Components**: Spring Data JPA for ORM, Flyway for migrations.
+- **Type**: Relational database.
+- **Entities**: `Enrollment` is the main entity, containing fields like `id`, `username`, `role`, and `vin`.
 
 === Security Architecture
 
-* **Description**: Implements OAuth2 for secure access, with JWT tokens for stateless authentication.
-* **Components**: Spring Security, Auth0.
+- **Authentication**: Basic authentication for API access.
+- **Authorization**: Role-based access control (RBAC) to differentiate user capabilities.
 
 === Network Architecture
 
-* **Description**: Designed to operate within a VPC with restricted access to ensure secure communication channels.
-* **Components**: AWS VPC, Security Groups, IAM Roles.
+- **Internal**: RESTful API communication within the Spring Boot application.
+- **External**: HTTPS for secure communication with external systems.
 
-== System Context
+== 4. System Context
 
 === External Systems and Their Interfaces
 
-* **User Management Service**: Provides user validation and data through REST API consumed by `UserManagementClient`.
+- **User Management System**: Provides user data and management capabilities. Accessed via RESTful services provided by `UserManagementClient`.
 
 === Data Flow Between Systems
 
-* **Flow**: User data flows from the User Management Service into the Enrollment System where it is processed and stored.
+- **Data Retrieval**: `EnrollmentService` retrieves user details from the User Management System.
+- **Data Storage**: `EnrollmentService` stores user enrollment details in the `EnrollmentRepository`.
 
 === Authentication and Authorization Flows at System Level
 
-* **Flow**: Users authenticate via OAuth2, receiving JWT tokens to make authorized requests to the system.
+- **Authentication**: Users authenticate via basic auth against the User Management System.
+- **Authorization**: Users are authorized based on their roles which dictate the actions they can perform within the system.
 
-This architecture document provides a detailed overview of the Enrollment System, ensuring clarity in design and implementation for all stakeholders involved.
+This document provides a comprehensive overview of the Enrollment System architecture, designed for architects and senior developers to understand and contribute effectively to the project.

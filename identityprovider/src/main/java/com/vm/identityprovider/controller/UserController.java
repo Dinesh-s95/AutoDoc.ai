@@ -26,16 +26,6 @@ public class UserController {
     @Autowired
     private JWTService jwtService;
 
-    @GetMapping("/home")
-    public String greet() {
-        return "Welcome to proto-calls";
-    }
-
-    @GetMapping("/homeee")
-    public String greet2() {
-        return "Welcome to proto-calls2";
-    }
-
     @PostMapping("/register")
     public Users registerUser(@RequestBody final Users user) {
         return userService.register(user);

@@ -21,7 +21,7 @@
       "Slf4j"
     ],
     "methods": [
-      "protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException"
+      "@Override protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException"
     ],
     "endpoints": [],
     "fields": [
@@ -39,9 +39,9 @@
       "EnableWebSecurity"
     ],
     "methods": [
-      "public AuthenticationManager authenticationManager(final AuthenticationConfiguration authConfig) throws Exception",
-      "public AuthenticationProvider authenticationProvider()",
-      "public SecurityFilterChain securityFilterChain(final HttpSecurity http) throws Exception"
+      "@Bean public AuthenticationManager authenticationManager(final AuthenticationConfiguration authConfig) throws Exception",
+      "@Bean public AuthenticationProvider authenticationProvider()",
+      "@Bean public SecurityFilterChain securityFilterChain(final HttpSecurity http) throws Exception"
     ],
     "endpoints": [],
     "fields": [
@@ -55,19 +55,43 @@
     "className": "UserController",
     "annotations": [
       "Autowired",
-      "GetMapping",
       "PostMapping",
       "RequestBody",
       "RequestMapping",
       "RestController"
     ],
     "methods": [
-      "public ResponseEntity<Object> login(@RequestBody final Users user)",
-      "public String greet()",
-      "public String greet2()",
-      "public Users registerUser(@RequestBody final Users user)"
+      "@PostMapping(\"/login\") public ResponseEntity<Object> login(@RequestBody final Users user)",
+      "@PostMapping(\"/register\") public Users registerUser(@RequestBody final Users user)"
     ],
-    "endpoints": [],
+    "endpoints": [
+      {
+        "annotation": "PostMapping",
+        "method": "@PostMapping(\"/register\") public Users registerUser(@RequestBody final Users user)",
+        "url": "/idp/users/register",
+        "inputs": [
+          {
+            "annotation": "RequestBody",
+            "type": "final",
+            "name": "Users"
+          }
+        ],
+        "output": "Users"
+      },
+      {
+        "annotation": "PostMapping",
+        "method": "@PostMapping(\"/login\") public ResponseEntity<Object> login(@RequestBody final Users user)",
+        "url": "/idp/users/login",
+        "inputs": [
+          {
+            "annotation": "RequestBody",
+            "type": "final",
+            "name": "Users"
+          }
+        ],
+        "output": "ResponseEntity<Object>"
+      }
+    ],
     "fields": [
       "authManager : AuthenticationManager",
       "jwtService : JWTService",
@@ -105,13 +129,13 @@
       "Override"
     ],
     "methods": [
-      "public Collection<? extends GrantedAuthority> getAuthorities()",
-      "public String getPassword()",
-      "public String getUsername()",
-      "public boolean isAccountNonExpired()",
-      "public boolean isAccountNonLocked()",
-      "public boolean isCredentialsNonExpired()",
-      "public boolean isEnabled()"
+      "@Override public Collection<? extends GrantedAuthority> getAuthorities()",
+      "@Override public String getPassword()",
+      "@Override public String getUsername()",
+      "@Override public boolean isAccountNonExpired()",
+      "@Override public boolean isAccountNonLocked()",
+      "@Override public boolean isCredentialsNonExpired()",
+      "@Override public boolean isEnabled()"
     ],
     "endpoints": [],
     "fields": [
@@ -180,7 +204,7 @@
       "Service"
     ],
     "methods": [
-      "public UserDetails loadUserByUsername(final String username) throws UsernameNotFoundException",
+      "@Override public UserDetails loadUserByUsername(final String username) throws UsernameNotFoundException",
       "public Users register(final Users user)"
     ],
     "endpoints": [],
