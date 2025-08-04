@@ -17,11 +17,18 @@ import java.util.Map;
 public class JWTService {
 
     private final Key secretKey;
+     private final AuditService auditService;
+    private final TokenBlacklistService tokenBlacklistService;
 
-    public JWTService() {
+    public JWTService(AuditService auditService, TokenBlacklistService tokenBlacklistService) {
         secretKey = Keys.secretKeyFor(SignatureAlgorithm.HS256);
+        this.auditService = auditService;
+        this.tokenBlacklistService = tokenBlacklistService;
     }
-
+public void invalidateToken(String token) {
+        tokenBlacklistService.blacklistToken(token);
+        auditService.logEvent("Token invalidated: " + token);
+    }
     public String generateToken(final String username) {
 
         final Map<String, Object> claims = new HashMap<>();
