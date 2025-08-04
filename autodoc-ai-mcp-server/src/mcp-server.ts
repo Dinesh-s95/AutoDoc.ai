@@ -1043,7 +1043,7 @@ Make it suitable for architects and senior developers to understand the overall 
    - User registration flow
    - Authentication/login flow
    - JWT token validation flow
-   - Key business process flows
+   - Business process flows
    - Exception handling flows
 
 3. **Entity Relationship Diagram**
