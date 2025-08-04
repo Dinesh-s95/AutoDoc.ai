@@ -137,13 +137,22 @@ class ConfluenceUploader:
         """
         Detects PlantUML blocks and replaces them with <ac:image> tags using PlantUML server URLs.
         """
-        def repl(match):
-            uml_code = match.group(2)
-            url = plantuml_url(uml_code)
-            return f'<ac:image><ri:url ri:value="{url}" /></ac:image>'
- 
-        pattern = re.compile(r'(\[plantuml.*?\]\s*----\s*)(@startuml.*?@enduml)(\s*----)', re.DOTALL)
-        return pattern.sub(lambda m: repl(m), content)
+        def replace_block(match):
+            uml_code = match.group(1) or match.group(2) or match.group(3)
+            if uml_code:
+                uml_code = uml_code.strip()
+                url = plantuml_url(uml_code)
+                return f'<ac:image><ri:url ri:value="{url}" /></ac:image>'
+            return match.group(0)  # fallback if nothing matched
+
+        pattern = re.compile(
+        r'(?:\[plantuml.*?\]\s*[-.]{4,}\s*(@startuml.*?@enduml)\s*[-.]{4,})|' +  # [plantuml] ---- blocks
+        r'(?:```plantuml\s*(@startuml.*?@enduml)\s*```)|' +                      # markdown ```plantuml blocks
+        r'(?:^(@startuml.*?@enduml)$)',                                          # raw blocks
+        re.DOTALL | re.IGNORECASE | re.MULTILINE
+        )
+
+        return pattern.sub(replace_block, content)
  
     def find_existing_page(self, title):
         url = f"{self.base_url}/content"
