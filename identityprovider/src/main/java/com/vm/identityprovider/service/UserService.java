@@ -34,12 +34,10 @@ public class UserService implements UserDetailsService {
 
     public Users register(final Users user){
         user.setPassword(encoder.encode(user.getPassword()));
-        return userRepository.save(user);
+        userRepository.save(user);
+        emailService.sendWelcomeEmail(user.getEmail());
+        auditService.logEvent("User registered: " + user.getUsername());
+        return user;
     }
 
-    public void registerUser(String username, String email) {
-        // ...user registration logic...
-        emailService.sendWelcomeEmail(email);
-        auditService.logEvent("User registered: " + username);
-    }
 }

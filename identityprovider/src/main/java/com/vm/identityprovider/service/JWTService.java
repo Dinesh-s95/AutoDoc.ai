@@ -25,10 +25,10 @@ public class JWTService {
         this.auditService = auditService;
         this.tokenBlacklistService = tokenBlacklistService;
     }
-public void invalidateToken(String token) {
-        tokenBlacklistService.blacklistToken(token);
-        auditService.logEvent("Token invalidated: " + token);
-    }
+        public void invalidateToken(String token) {
+                tokenBlacklistService.blacklistToken(token);
+                auditService.logEvent("Token invalidated: " + token);
+            }
     public String generateToken(final String username) {
 
         final Map<String, Object> claims = new HashMap<>();
@@ -48,6 +48,7 @@ public void invalidateToken(String token) {
                     .setSigningKey(secretKey).build().parseClaimsJws(token);
             return true;
         } catch (JwtException | IllegalArgumentException e){
+            invalidateToken(token)
             log.error("Token validation failed: {}", e.getMessage());
             return false;
         }
