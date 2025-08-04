@@ -340,8 +340,7 @@
     ],
     "methods": [
       "@Override public UserDetails loadUserByUsername(final String username) throws UsernameNotFoundException",
-      "public Users register(final Users user)",
-      "public void registerUser(String username, String email)"
+      "public Users register(final Users user)"
     ],
     "endpoints": [],
     "fields": [

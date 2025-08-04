@@ -1,29 +1,32 @@
-Below is the OpenAPI 3.0 specification in YAML format based on the provided Java Spring Boot application classes, focusing on the `UserController` with JWT authentication for security.
+Below is the OpenAPI 3.0 specification in YAML format for the given Spring Boot application, focusing on the `UserController`. This spec includes detailed endpoint documentation, security schemes, and schema definitions.
 
 ```yaml
 openapi: 3.0.0
 info:
   title: Identity Provider API
   version: 1.0.0
-  description: API for handling user authentication and registration processes.
+  description: API for managing user authentication and registration
 servers:
   - url: /idp
 paths:
   /users/register:
     post:
       tags:
-        - User Operations
+        - User Management
       summary: Register a new user
-      description: This endpoint is used for registering a new user in the system.
+      operationId: registerUser
       requestBody:
+        description: User data for registration
         required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/Users'
-            example:
-              username: "johndoe"
-              password: "password123"
+            examples:
+              example1:
+                value:
+                  username: "newuser"
+                  password: "password123"
       responses:
         '200':
           description: User registered successfully
@@ -32,26 +35,27 @@ paths:
               schema:
                 $ref: '#/components/schemas/Users'
         '400':
-          description: Invalid input
+          description: Bad request
         '500':
-          description: Server error
-      security:
-        - bearerAuth: []
+          description: Internal Server Error
   /users/login:
     post:
       tags:
-        - User Operations
+        - User Management
       summary: User login
-      description: This endpoint is used for user login. Returns a JWT token upon successful authentication.
+      operationId: loginUser
       requestBody:
+        description: User login credentials
         required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/Users'
-            example:
-              username: "johndoe"
-              password: "password123"
+            examples:
+              example1:
+                value:
+                  username: "user"
+                  password: "password"
       responses:
         '200':
           description: Login successful
@@ -62,9 +66,7 @@ paths:
         '401':
           description: Unauthorized
         '500':
-          description: Server error
-      security:
-        - bearerAuth: []
+          description: Internal Server Error
 components:
   schemas:
     Users:
@@ -82,18 +84,25 @@ components:
       properties:
         token:
           type: string
-          description: JWT token used for subsequent requests
+        refreshToken:
+          type: string
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+security:
+  - bearerAuth: []
 ```
 
-### Notes:
-- **Overview Section**: Includes API title, version, and base path. General usage guidance and authentication methods are described in the description fields.
-- **OpenAPI Specification**: Each endpoint from the `UserController` is documented with possible request and response formats. Security is applied using JWT bearer tokens.
-- **Security**: JWT authentication is configured under `components.securitySchemes`.
-- **Additional Docs**: Each endpoint includes a description, example uses, and possible error codes. The schema for request and response bodies is defined under `components.schemas`.
+### Explanation:
 
-This YAML is structured to be validated in tools like Swagger Editor and can be directly used in API gateways or imported into Postman for testing. It's designed to be human-readable with logical grouping by tags and detailed documentation for each endpoint.
+1. **Overview Section**: The API title, version, and base path are defined at the top of the document. The description provides a brief overview of the API's purpose.
+
+2. **Paths**: Each endpoint from the `UserController` is documented with HTTP methods, request bodies, responses, and examples. Tags are used to group operations logically.
+
+3. **Components**: JSON schemas for `Users` and `AuthResponse` are defined under `components.schemas`. These schemas are referenced in the request and response bodies to ensure consistency and reusability.
+
+4. **Security**: A JWT-based security scheme is included under `components.securitySchemes`. This is applied globally to all endpoints, as specified in the `security` section at the bottom of the document.
+
+This YAML file is ready to be imported into tools like Swagger Editor for validation, Postman for API testing, or any API Gateway that supports OpenAPI 3.0 specifications.
