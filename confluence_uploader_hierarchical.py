@@ -2,29 +2,83 @@ import os
 import sys
 import json
 import requests
+import re
+import subprocess
+import base64
+import zlib
 from datetime import datetime
 from pathlib import Path
-
+ 
 # Configuration
 CONFLUENCE_URL = os.getenv("CONFLUENCE_URL", "https://sharan99r.atlassian.net")
 CONFLUENCE_USER = os.getenv("CONFLUENCE_USER", "sharan99r@gmail.com")
-CONFLUENCE_API_TOKEN = os.getenv("CONFLUENCE_API_TOKEN")
+CONFLUENCE_API_TOKEN = os.getenv("CONFLUENCE_API_TOKEN","ATATT3xFfGF0aOGqDQfxsCI9Zl2RHA_jBzhr5GLhZlw2eQIryWgfuXh-ovJ0vaOLkUdojxW2YCrVeHNRnaAlj4N23E-f10W1ppXRxDqfhD3qU1Xk2-DrJ-CCfQwf8X8zMw021Ea5jYyCaOl0ZriLHspcSMBfiLpUSD7c8ZTBX7If3jbaP22kz0s=828D2C0B")
 SPACE_KEY = os.getenv("SPACE_KEY", "~712020a1106f7965b7429fa169a05d4788f4d5")
-
+ 
 # Microservices to scan for documentation
 MICROSERVICES = [
     "identityprovider",
-    "enrollment", 
+    "enrollment",
     "usermanagement",
     "vehiclemanagement"
 ]
-
+ 
+def plantuml_encode(text):
+    """Encodes PlantUML text for server URL."""
+    def encode6bit(b):
+        if b < 10:
+            return chr(48 + b)
+        b -= 10
+        if b < 26:
+            return chr(65 + b)
+        b -= 26
+        if b < 26:
+            return chr(97 + b)
+        b -= 26
+        if b == 0:
+            return '-'
+        if b == 1:
+            return '_'
+        return '?'
+    data = zlib.compress(text.encode('utf-8'))
+    data = data[2:-4]
+    res = ''
+    i = 0
+    while i < len(data):
+        if i+2 < len(data):
+            b1 = data[i]
+            b2 = data[i+1]
+            b3 = data[i+2]
+            res += encode6bit((b1 >> 2) & 0x3F)
+            res += encode6bit(((b1 << 4) | (b2 >> 4)) & 0x3F)
+            res += encode6bit(((b2 << 2) | (b3 >> 6)) & 0x3F)
+            res += encode6bit(b3 & 0x3F)
+            i += 3
+        elif i+1 < len(data):
+            b1 = data[i]
+            b2 = data[i+1]
+            res += encode6bit((b1 >> 2) & 0x3F)
+            res += encode6bit(((b1 << 4) | (b2 >> 4)) & 0x3F)
+            res += encode6bit((b2 << 2) & 0x3F)
+            i += 2
+        else:
+            b1 = data[i]
+            res += encode6bit((b1 >> 2) & 0x3F)
+            res += encode6bit((b1 << 4) & 0x3F)
+            i += 1
+    return res
+ 
+def plantuml_url(uml_code):
+    encoded = plantuml_encode(uml_code)
+    return f"https://www.plantuml.com/plantuml/png/{encoded}"
+ 
+ 
 class ConfluenceUploader:
     def __init__(self):
         self.base_url = f"{CONFLUENCE_URL}/wiki/rest/api"
         self.auth = (CONFLUENCE_USER, CONFLUENCE_API_TOKEN)
         self.headers = {'Accept': 'application/json', 'Content-Type': 'application/json'}
-
+ 
     def _request(self, method, url, **kwargs):
         try:
             response = requests.request(method, url, auth=self.auth, headers=self.headers, **kwargs)
@@ -33,19 +87,19 @@ class ConfluenceUploader:
         except requests.RequestException as e:
             print(f"Request failed: {e}")
             return None
-
+ 
     def test_connection(self):
         print("Testing Confluence API connection...")
         print(f"URL: {self.base_url}")
         print(f"Space Key: {SPACE_KEY}")
         print(f"User: {CONFLUENCE_USER}")
         print(f"API Token: {CONFLUENCE_API_TOKEN[:10]}..." if CONFLUENCE_API_TOKEN else "❌ Not set")
-
+ 
         if not CONFLUENCE_API_TOKEN:
             print("❌ CONFLUENCE_API_TOKEN is not set!")
             print("Please run: export CONFLUENCE_API_TOKEN='your-token-here'")
             return None
-
+ 
         # First try to get user info to test basic auth
         user_url = f"{self.base_url}/user/current"
         print(f"Testing user authentication: {user_url}")
@@ -54,10 +108,10 @@ class ConfluenceUploader:
             print("❌ Authentication failed - check your API token")
             print("Generate a new token at: https://id.atlassian.com/manage-profile/security/api-tokens")
             return None
-
+ 
         user_info = user_response.json()
         print(f"✅ Authenticated as: {user_info.get('displayName')} ({user_info.get('email')})")
-
+ 
         # Now test space access
         url = f"{self.base_url}/space/{SPACE_KEY}"
         print(f"Testing space access: {url}")
@@ -78,7 +132,19 @@ class ConfluenceUploader:
                 if 'AUTOD' not in available_keys:
                     print(f"❌ AUTOD space not found. Try one of: {available_keys}")
             return None
-
+ 
+    def render_plantuml_blocks(self, content, doc_dir):
+        """
+        Detects PlantUML blocks and replaces them with <ac:image> tags using PlantUML server URLs.
+        """
+        def repl(match):
+            uml_code = match.group(2)
+            url = plantuml_url(uml_code)
+            return f'<ac:image><ri:url ri:value="{url}" /></ac:image>'
+ 
+        pattern = re.compile(r'(\[plantuml.*?\]\s*----\s*)(@startuml.*?@enduml)(\s*----)', re.DOTALL)
+        return pattern.sub(lambda m: repl(m), content)
+ 
     def find_existing_page(self, title):
         url = f"{self.base_url}/content"
         params = {'title': title, 'spaceKey': SPACE_KEY, 'expand': 'version'}
@@ -87,7 +153,7 @@ class ConfluenceUploader:
             results = response.json().get('results', [])
             return results[0] if results else None
         return None
-
+ 
     def update_page(self, page_id, title, content, version, parent_id=None):
         data = {
             "version": {"number": version + 1},
@@ -97,11 +163,11 @@ class ConfluenceUploader:
         }
         if parent_id:
             data["ancestors"] = [{"id": parent_id}]
-
+ 
         url = f"{self.base_url}/content/{page_id}"
         response = self._request("PUT", url, data=json.dumps(data))
         return bool(response)
-
+ 
     def create_page(self, title, content, parent_id=None):
         data = {
             "type": "page",
@@ -111,11 +177,11 @@ class ConfluenceUploader:
         }
         if parent_id:
             data["ancestors"] = [{"id": parent_id}]
-
+ 
         url = f"{self.base_url}/content"
         response = self._request("POST", url, data=json.dumps(data))
         return response.json().get('id') if response else None
-
+ 
     def convert_adoc_to_html(self, content):
         html = []
         in_code = False
@@ -140,7 +206,7 @@ class ConfluenceUploader:
         if in_code:
             html.append('</code></pre>')
         return '\n'.join(html)
-
+ 
     def convert_to_html(self, content, ext):
         if ext == '.adoc':
             return self.convert_adoc_to_html(content)
@@ -148,7 +214,7 @@ class ConfluenceUploader:
             return f"<pre><code>{content}</code></pre>"
         else:
             return f"<pre><code>{content}</code></pre>"
-
+ 
     def read_file(self, path):
         try:
             with open(path, 'r', encoding='utf-8') as f:
@@ -156,7 +222,7 @@ class ConfluenceUploader:
         except Exception as e:
             print(f"Could not read file {path}: {e}")
             return None
-
+ 
     def find_docs(self):
         print("Scanning for documentation files...")
         all_docs = {}
@@ -171,24 +237,24 @@ class ConfluenceUploader:
             all_docs[svc] = doc_files
         print(f"Total services with docs: {len(all_docs)}")
         return all_docs
-
+ 
     def upload(self):
         print("Starting upload process...")
         space = self.test_connection()
         if not space:
             print("Failed to connect to Confluence")
             return False
-
+ 
         docs = self.find_docs()
         if not docs:
             print("No documentation found.")
             return False
-
+ 
         print(f"Processing {len(docs)} services...")
         parent_title = "Microservices Documentation"
         parent_page = self.find_existing_page(parent_title)
         parent_content = f"<h1>{parent_title}</h1><p>Updated: {datetime.now()}</p>"
-
+ 
         if parent_page:
             print(f"Updating existing parent page: {parent_title}")
             self.update_page(parent_page['id'], parent_title, parent_content, parent_page['version']['number'])
@@ -196,9 +262,9 @@ class ConfluenceUploader:
         else:
             print(f"Creating new parent page: {parent_title}")
             parent_id = self.create_page(parent_title, parent_content)
-
+ 
         print(f"Parent page ID: {parent_id}")
-
+ 
         for svc, files in docs.items():
             print(f"\n--- Processing service: {svc} ({len(files)} files) ---")
             svc_title = f"{svc.title()} Documentation"
@@ -211,9 +277,9 @@ class ConfluenceUploader:
             else:
                 print(f"Creating service page: {svc_title}")
                 svc_id = self.create_page(svc_title, svc_content, parent_id)
-
+ 
             print(f"Service page ID: {svc_id}")
-
+ 
             for f in files:
                 fname = os.path.basename(f)
                 title = os.path.splitext(fname)[0].replace('_', ' ').title() + f" - {svc.title()}"
@@ -222,6 +288,8 @@ class ConfluenceUploader:
                 if not content:
                     print(f"  Could not read file: {f}")
                     continue
+ 
+                content = self.render_plantuml_blocks(content, Path(f).parent)
                 html = self.convert_to_html(content, Path(f).suffix)
                 page = self.find_existing_page(title)
                 page_content = f"<h3>{title}</h3><p>File: {fname}</p><hr/>{html}"
@@ -229,14 +297,15 @@ class ConfluenceUploader:
                     print(f"  Updating existing page: {title}")
                     result = self.update_page(page['id'], title, page_content, page['version']['number'], svc_id)
                     print(f"  Update result: {result}")
+                    page_id = page['id']
                 else:
                     print(f"  Creating new page: {title}")
                     result = self.create_page(title, page_content, svc_id)
-                    print(f"  Create result: {result}")
-
+                    print(f"  Create result: {page_id}")
+ 
         print("Upload complete.")
         return True
-
+ 
 def main():
     print("Starting upload...")
     if not CONFLUENCE_API_TOKEN:
@@ -245,6 +314,6 @@ def main():
     uploader = ConfluenceUploader()
     success = uploader.upload()
     sys.exit(0 if success else 1)
-
+ 
 if __name__ == "__main__":
     main()
