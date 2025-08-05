@@ -1142,6 +1142,9 @@ Make it suitable for developers to understand the detailed implementation design
    - Add curl examples for major operations
    - Document possible error codes (e.g., 401, 400)
 
+5. **Donts**
+   - please exclude and Do not put the header disclaimer which starts Below is the OpenAPI 3.0 specification
+   - Do not include any explanations, summaries, or additional commentary such as "This YAML is structured to be..." Only output the pure OpenAPI YAML content.
 ---
 
 Here are the REST controller classes:
