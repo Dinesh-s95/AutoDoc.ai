@@ -1043,7 +1043,7 @@ Make it suitable for architects and senior developers to understand the overall 
    - User registration flow
    - Authentication/login flow
    - JWT token validation flow
-   - Key business process flows
+   - Business process flows
    - Exception handling flows
 
 3. **Entity Relationship Diagram**
@@ -1051,6 +1051,9 @@ Make it suitable for architects and senior developers to understand the overall 
    - Entity attributes and relationships
    - Foreign key relationships
    - Database constraints and indexes
+
+  After the PlantUML ER diagram, provide a detailed, human-readable description of the entities and their relationships as depicted in the diagram.
+
 
 4. **Detailed Component Interactions**
    - Controller-Service-Repository interactions

@@ -15,6 +15,10 @@ public class UserService implements UserDetailsService {
 
     @Autowired
     private UserRepository userRepository;
+    @Autowired
+    private  EmailService emailService;
+    @Autowired
+    private AuditService auditService;
 
     private BCryptPasswordEncoder encoder = new BCryptPasswordEncoder(5);
 
@@ -30,6 +34,10 @@ public class UserService implements UserDetailsService {
 
     public Users register(final Users user){
         user.setPassword(encoder.encode(user.getPassword()));
-        return userRepository.save(user);
+        userRepository.save(user);
+        emailService.sendWelcomeEmail(user.getEmail());
+        auditService.logEvent("User registered: " + user.getUsername());
+        return user;
     }
+
 }
