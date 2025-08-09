@@ -9,6 +9,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import fs from 'fs/promises';
 import path from 'path';
+import { spawn } from 'child_process';
 import OpenAI from 'openai';
 import crypto from 'crypto';
 
@@ -32,6 +33,10 @@ interface ServerConfig {
   docFormat: string;
   logLevel: string;
   autoRunPipeline: boolean;
+  // Jira configuration
+  jiraBaseUrl: string;
+  jiraEmail: string;
+  jiraApiToken: string;
 }
 
 // Cache metadata interface
@@ -40,6 +45,31 @@ interface CacheMetadata {
   lastUpdated: string;
   sourceFiles: string[];
   classCount: number;
+}
+
+// Jira issue interface
+interface JiraIssue {
+  id: string;
+  key: string;
+  fields: {
+    summary: string;
+    description?: any;
+    status: {
+      name: string;
+    };
+    issuetype: {
+      name: string;
+    };
+    created: string;
+    updated: string;
+  };
+}
+
+// Git commit info interface
+interface GitCommitInfo {
+  hash: string;
+  message: string;
+  ticketNumber?: string;
 }
 
 class JavaDocumentationMCPServer {
@@ -57,12 +87,16 @@ class JavaDocumentationMCPServer {
       docFormat: process.env.DOC_FORMAT || 'adoc',
       logLevel: process.env.LOG_LEVEL || 'info',
       autoRunPipeline: process.env.AUTO_RUN_PIPELINE === 'true',
+      // Jira configuration
+      jiraBaseUrl: process.env.JIRA_BASE_URL || '',
+      jiraEmail: process.env.JIRA_EMAIL || '',
+      jiraApiToken: process.env.JIRA_API_TOKEN || '',
     };
 
     this.server = new Server(
       {
         name: 'java-documentation-server',
-        version: '2.0.0',
+        version: '2.1.0',
       },
       {
         capabilities: {
@@ -78,7 +112,6 @@ class JavaDocumentationMCPServer {
     }
 
     this.openai = new OpenAI({
-      // baseURL: 'https://openrouter.ai/api/v1',
       apiKey: this.config.openaiApiKey,
     });
 
@@ -87,6 +120,7 @@ class JavaDocumentationMCPServer {
       microservicePath: this.config.microservicePath,
       outputPath: this.config.outputPath,
       format: this.config.docFormat,
+      jiraConfigured: !!(this.config.jiraBaseUrl && this.config.jiraEmail && this.config.jiraApiToken),
     });
 
     this.setupToolHandlers();
@@ -110,7 +144,21 @@ class JavaDocumentationMCPServer {
   }
 
   private logError(message: string, data?: any) {
-    this.log('error', message, data);
+    // Handle Error objects specially to extract useful information
+    if (data instanceof Error) {
+      this.log('error', message, {
+        errorMessage: data.message,
+        stack: data.stack?.split('\n'),
+        name: data.name
+      });
+    } else if (data !== undefined) {
+      // For non-Error objects, try to ensure they're loggable
+      this.log('error', message, 
+        typeof data === 'object' ? JSON.parse(JSON.stringify(data)) : String(data)
+      );
+    } else {
+      this.log('error', message);
+    }
   }
 
   private logDebug(message: string, data?: any) {
@@ -169,8 +217,30 @@ class JavaDocumentationMCPServer {
           },
         },
         {
+          name: 'generate_release_notes',
+          description: 'Generate release notes based on the last commit with Jira ticket number (format: TICKET-123 commit message)',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              projectPath: {
+                type: 'string',
+                description: 'Path to the git repository (optional, uses env MICROSERVICE_PATH if not provided)',
+              },
+              outputDir: {
+                type: 'string',
+                description: 'Directory to save release notes (optional, uses env OUTPUT_PATH/release-notes)',
+              },
+              branch: {
+                type: 'string',
+                description: 'Git branch to check for commits (default: current branch)',
+              },
+            },
+            required: [],
+          },
+        },
+        {
           name: 'full_pipeline',
-          description: 'Complete pipeline: analyze Java project and generate documentation (with smart caching)',
+          description: 'Complete pipeline: analyze Java project, generate documentation, and create release notes (with smart caching)',
           inputSchema: {
             type: 'object',
             properties: {
@@ -190,6 +260,10 @@ class JavaDocumentationMCPServer {
               forceRegenerate: {
                 type: 'boolean',
                 description: 'Force complete regeneration ignoring cache (default: false)',
+              },
+              generateReleaseNotes: {
+                type: 'boolean',
+                description: 'Whether to generate release notes (default: true)',
               },
             },
             required: [],
@@ -243,6 +317,9 @@ class JavaDocumentationMCPServer {
           case 'generate_documentation':
             result = await this.generateDocumentation(request.params.arguments);
             break;
+          case 'generate_release_notes':
+            result = await this.generateReleaseNotes(request.params.arguments);
+            break;
           case 'full_pipeline':
             result = await this.fullPipeline(request.params.arguments);
             break;
@@ -253,13 +330,13 @@ class JavaDocumentationMCPServer {
             result = await this.getCacheStatus(request.params.arguments);
             break;
           default:
-            const availableTools = ['analyze_java_project', 'generate_documentation', 'full_pipeline', 'get_config', 'get_cache_status'];
+            const availableTools = ['analyze_java_project', 'generate_documentation', 'generate_release_notes', 'full_pipeline', 'get_config', 'get_cache_status'];
             this.logError(`Unknown tool requested: ${request.params.name}. Available tools: ${availableTools.join(', ')}`);
             result = {
               content: [
                 {
                   type: 'text',
-                  text: `❌ Error: Unknown tool: ${request.params.name}\n\n💡 Available tools:\n${availableTools.map(tool => `- ${tool}`).join('\n')}\n\n💡 **Troubleshooting Tips:**\n- Check that your project path exists and contains source files\n- Verify your OpenAI API key is valid and starts with "sk-"\n- Ensure you have write permissions to the output directory\n- For Java projects, make sure you have .java files in src/ directories\n- Check that your OpenAI account has available credits`,
+                  text: `❌ Error: Unknown tool: ${request.params.name}\n\n💡 Available tools:\n${availableTools.map(tool => `- ${tool}`).join('\n')}\n\n💡 **Troubleshooting Tips:**\n- Check that your project path exists and contains source files\n- Verify your OpenAI API key is valid and starts with "sk-"\n- Ensure you have write permissions to the output directory\n- For Java projects, make sure you have .java files in src/ directories\n- Check that your OpenAI account has available credits\n- For Jira integration, ensure JIRA_BASE_URL, JIRA_EMAIL, and JIRA_API_TOKEN are set`,
                 },
               ],
               isError: true,
@@ -280,7 +357,7 @@ class JavaDocumentationMCPServer {
           content: [
             {
               type: 'text',
-              text: `❌ Error executing ${request.params.name}: ${error instanceof Error ? error.message : String(error)}\n\n💡 **Troubleshooting Tips:**\n- Check that your project path exists and contains source files\n- Verify your OpenAI API key is valid and starts with "sk-"\n- Ensure you have write permissions to the output directory\n- For Java projects, make sure you have .java files in src/ directories\n- Check that your OpenAI account has available credits`,
+              text: `❌ Error executing ${request.params.name}: ${error instanceof Error ? error.message : String(error)}\n\n💡 **Troubleshooting Tips:**\n- Check that your project path exists and contains source files\n- Verify your OpenAI API key is valid and starts with "sk-"\n- Ensure you have write permissions to the output directory\n- For Java projects, make sure you have .java files in src/ directories\n- Check that your OpenAI account has available credits\n- For Jira integration, ensure JIRA_BASE_URL, JIRA_EMAIL, and JIRA_API_TOKEN are set`,
             },
           ],
           isError: true,
@@ -295,6 +372,7 @@ class JavaDocumentationMCPServer {
     const configDisplay = {
       ...this.config,
       openaiApiKey: this.config.openaiApiKey ? '***CONFIGURED***' : '***NOT SET***',
+      jiraApiToken: this.config.jiraApiToken ? '***CONFIGURED***' : '***NOT SET***',
     };
 
     return {
@@ -377,6 +455,259 @@ class JavaDocumentationMCPServer {
     }
   }
 
+  private async getLastCommitFromBranch(projectPath: string, branch?: string): Promise<GitCommitInfo> {
+    // Get the commit information in a single command
+    return new Promise((resolve, reject) => {
+      const gitArgs = ['log', '-1', '--pretty=format:%H|%s', ...(branch ? [branch] : [])];
+
+      this.logDebug(`Executing git command: git ${gitArgs.join(' ')} in ${projectPath}`);
+
+      const git = spawn('git', gitArgs, { 
+        cwd: projectPath,
+        stdio: 'pipe'
+      });
+
+      let output = '';
+      let error = '';
+
+      git.stdout.on('data', (data) => {
+        output += data.toString();
+      });
+
+      git.stderr.on('data', (data) => {
+        error += data.toString();
+      });
+
+      git.on('close', (code) => {
+        this.logDebug(`Git command finished with code ${code}, output: "${output.trim()}", error: "${error.trim()}"`);
+        
+        if (code !== 0) {
+          const errorMessage = error.trim() || `Git command failed with exit code ${code}`;
+          this.logError(`Git command failed with code ${code}: ${errorMessage}`);
+          reject(new Error(`Git command failed with code ${code}: ${errorMessage}`));
+          return;
+        }
+
+        if (!output.trim()) {
+          this.logError('Git command returned empty output - no commits found');
+          reject(new Error('No commits found in the repository'));
+          return;
+        }
+
+        const parts = output.trim().split('|');
+        if (parts.length < 2) {
+          this.logError(`Invalid git output format: "${output.trim()}"`);
+          reject(new Error(`Invalid git log output format: "${output.trim()}"`));
+          return;
+        }
+
+        const [hash, message] = parts;
+        
+        this.logDebug(`Parsed commit: hash="${hash}", message="${message}"`);
+        
+        // Extract ticket number from commit message (format: TICKET-123 commit message)
+        const ticketMatch = message.match(/^([A-Z]+[-_][0-9]+)/);
+        const ticketNumber = ticketMatch ? ticketMatch[1].replace('_', '-') : undefined;
+        
+        this.logDebug(`Extracted ticket number: ${ticketNumber || 'none'}`);
+
+        resolve({
+          hash,
+          message,
+          ticketNumber
+        });
+      });
+
+      git.on('error', (err) => {
+        this.logError(`Failed to execute git command: ${err.message}`, err);
+        reject(new Error(`Failed to execute git command: ${err.message}`));
+      });
+    });
+  }
+
+  private async fetchJiraIssue(ticketNumber: string): Promise<JiraIssue> {
+    if (!this.config.jiraBaseUrl || !this.config.jiraEmail || !this.config.jiraApiToken) {
+      throw new Error('Jira configuration missing. Please set JIRA_BASE_URL, JIRA_EMAIL, and JIRA_API_TOKEN environment variables.');
+    }
+
+    const auth = Buffer.from(`${this.config.jiraEmail}:${this.config.jiraApiToken}`).toString('base64');
+    
+    try {
+      const response = await fetch(`${this.config.jiraBaseUrl}/rest/api/3/issue/${ticketNumber}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Basic ${auth}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error(`Jira ticket ${ticketNumber} not found`);
+        } else if (response.status === 401) {
+          throw new Error('Jira authentication failed. Please check your credentials.');
+        } else {
+          throw new Error(`Jira API error: ${response.status} ${response.statusText}`);
+        }
+      }
+
+      const issue = await response.json() as JiraIssue;
+      return issue;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error(`Failed to fetch Jira issue: ${String(error)}`);
+    }
+  }
+
+  private getCurrentQuarter(): string {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1; // getMonth() returns 0-11
+    const quarter = Math.ceil(month / 3);
+    return `${year}.${quarter}`;
+  }
+
+  private async generateReleaseNotes(args: any): Promise<CallToolResult> {
+    // Use the root directory (proto-calls-autodoc) for Git operations and release notes
+    const gitRepoPath = path.join(process.cwd(), '..');
+    const outputDir = args?.outputDir || path.join(gitRepoPath, 'release-notes');
+    const branch = args?.branch || 'testJiraIntegration';
+
+    try {
+      // Check if .git directory exists in the root repository
+      try {
+        await fs.access(path.join(gitRepoPath, '.git'));
+        this.logDebug('Git repository detected');
+      } catch (error) {
+        throw new Error(`Root directory is not a git repository: ${gitRepoPath}`);
+      }
+
+      this.logInfo(`🏷️  Generating release notes in root directory: ${gitRepoPath}`);
+
+      // Get the last commit information from the root repository
+      this.logDebug('Fetching last commit information...');
+      const commitInfo = await this.getLastCommitFromBranch(gitRepoPath, branch);
+      this.logInfo(`📝 Last commit: ${commitInfo.hash.substring(0, 8)} - ${commitInfo.message}`);
+
+      if (!commitInfo.ticketNumber) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `⚠️  No Jira ticket number found in the last commit message.\n\nCommit: ${commitInfo.hash.substring(0, 8)} - "${commitInfo.message}"\n\n💡 Expected format: "TICKET-123 your commit message" where TICKET-123 is your Jira ticket number.`,
+            },
+          ],
+        };
+      }
+
+      this.logInfo(`🎫 Jira ticket found: ${commitInfo.ticketNumber}`);
+
+      // Check if release note already exists for this ticket
+      const fileName = `${commitInfo.ticketNumber}.txt`;
+      const filePath = path.join(outputDir, fileName);
+      
+      try {
+        await fs.access(filePath);
+        // File exists, skip generation
+        this.logInfo(`📝 Skipping release note generation since its already exists for ticket ${commitInfo.ticketNumber}`);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `ℹ️ Release note already exists for ${commitInfo.ticketNumber}\n\n` +
+                    `📁 File: ${fileName}\n` +
+                    `📂 Location: ${filePath}\n\n` +
+                    `💡 Skipping generation to avoid duplicate entries.`,
+            },
+          ],
+        };
+      } catch {
+        // File doesn't exist, continue with generation
+        await fs.mkdir(outputDir, { recursive: true });
+      }
+
+      // Fetch Jira issue details
+      try {
+        const jiraIssue = await this.fetchJiraIssue(commitInfo.ticketNumber);
+        this.logInfo(`📋 Fetched Jira issue: ${jiraIssue.key} - ${jiraIssue.fields.summary}`);
+
+        // Generate release note content
+        const release = this.getCurrentQuarter();
+        const releaseNoteContent = `${jiraIssue.key} & ${jiraIssue.fields.summary} & ${release}`;
+
+        // Save release note file
+        const fileName = `${jiraIssue.key}.txt`;
+        const filePath = path.join(outputDir, fileName);
+        await fs.writeFile(filePath, releaseNoteContent);
+
+        this.logInfo(`📄 Release note generated: ${filePath}`);
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `✅ Release note generated successfully!\n\n` +
+                    `🎫 Jira Ticket: ${jiraIssue.key}\n` +
+                    `📋 Title: ${jiraIssue.fields.summary}\n` +
+                    `📅 Release: ${release}\n` +
+                    `📁 File: ${fileName}\n` +
+                    `📂 Location: ${filePath}\n\n` +
+                    `📝 Content: ${releaseNoteContent}`,
+            },
+          ],
+        };
+      } catch (jiraError) {
+        this.logError('Jira API call failed', jiraError);
+        
+        // Generate release note with limited info since Jira fetch failed
+        const release = this.getCurrentQuarter();
+        const releaseNoteContent = `${commitInfo.ticketNumber} & ${commitInfo.message} & ${release}`;
+
+        await fs.writeFile(filePath, releaseNoteContent);
+        
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `⚠️  Release note generated with limited info (Jira fetch failed)\n\n` +
+                    `🎫 Ticket: ${commitInfo.ticketNumber}\n` +
+                    `📝 Commit: ${commitInfo.message}\n` +
+                    `📅 Release: ${release}\n` +
+                    `📁 File: ${fileName}\n` +
+                    `📂 Location: ${filePath}\n\n` +
+                    `❌ Jira Error: ${jiraError instanceof Error ? jiraError.message : String(jiraError)}\n` +
+                    `📝 Content: ${releaseNoteContent}`,
+            },
+          ],
+        };
+      }
+
+    } catch (err) {
+      this.logError('Release notes generation failed', err);
+      
+      // Provide more specific error messages based on the type of error
+      let errorMessage: string;
+      if (err instanceof Error) {
+        if (err.message.includes('not a git repository')) {
+          errorMessage = `Directory is not a git repository: ${gitRepoPath}`;
+        } else if (err.message.includes('No commits found')) {
+          errorMessage = 'No commits found in the repository';
+        } else if (err.message.includes('Git command failed')) {
+          errorMessage = `Git error: ${err.message}`;
+        } else {
+          errorMessage = err.message;
+        }
+      } else {
+        errorMessage = String(err);
+      }
+      
+      throw new Error(`Failed to generate release notes: ${errorMessage}`);
+    }
+  }
+  
   private async calculateSourceHash(projectPath: string): Promise<string> {
     const javaFiles = await this.findJavaFiles(projectPath);
     
@@ -678,6 +1009,7 @@ class JavaDocumentationMCPServer {
     const outputDir = args?.outputDir || this.config.outputPath;
     const outputFormat = args?.outputFormat || this.config.docFormat;
     const forceRegenerate = args?.forceRegenerate || false;
+    const generateReleaseNotes = args?.generateReleaseNotes !== false; // Default to true
     
     if (!projectPath) {
       throw new Error('projectPath is required (either as parameter or MICROSERVICE_PATH env var)');
@@ -759,18 +1091,67 @@ class JavaDocumentationMCPServer {
       pipelineResults.push('✅ Documentation is up-to-date (skipped regeneration)');
     }
 
+    // Step 3: Generate release notes if requested and Jira is configured
+    // Step 3: Generate release notes if requested and Jira is configured
+    if (generateReleaseNotes) {
+      this.logInfo('🏷️  Step 3: Generating release notes...');
+      try {
+        const releaseNotesResult = await this.generateReleaseNotes({
+          projectPath,
+          outputDir: args?.releaseNotesPath || path.join(outputDir, 'release-notes')
+        });
+        
+        // Extract success message from release notes result
+        const releaseNotesText = releaseNotesResult.content[0]?.type === 'text' ? 
+          releaseNotesResult.content[0].text : '';
+        
+        if (releaseNotesText.startsWith('✅')) {
+          pipelineResults.push('🏷️  Generated release notes successfully');
+          // Extract ticket info from the result
+          const ticketMatch = releaseNotesText.match(/🎫 Jira Ticket: ([A-Z]+-\d+)/);
+          if (ticketMatch) {
+            pipelineResults.push(`📋 Ticket: ${ticketMatch[1]}`);
+          }
+        } else if (releaseNotesText.startsWith('⚠️')) {
+          pipelineResults.push('⚠️  ' + releaseNotesText.split('\n')[0].replace('⚠️  ', ''));
+        } else {
+          pipelineResults.push('⚠️  Release notes: ' + releaseNotesText.split('\n')[0]);
+        }
+      } catch (error) {
+        this.logError('Release notes generation failed', error);
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        
+        // Categorize the error for better user feedback
+        if (errorMsg.includes('not a git repository')) {
+          pipelineResults.push('❌ Release notes failed: Not a git repository');
+        } else if (errorMsg.includes('No commits found')) {
+          pipelineResults.push('❌ Release notes failed: No commits found');
+        } else if (errorMsg.includes('Jira configuration missing')) {
+          pipelineResults.push('⚠️  Release notes skipped (Jira not configured)');
+        } else if (errorMsg.includes('Git command failed')) {
+          pipelineResults.push('❌ Release notes failed: Git error');
+          this.logDebug(`Git error details: ${errorMsg}`);
+        } else {
+          pipelineResults.push(`❌ Release notes failed: ${errorMsg.split('\n')[0]}`);
+        }
+      }
+    } else {
+      pipelineResults.push('⏭️  Release notes generation skipped');
+    }
+
     this.logInfo('\n✅ Full pipeline completed successfully');
 
     return {
       content: [
         {
           type: 'text',
-          text: `🎉 Full pipeline completed successfully!\n\n📋 Pipeline Results:\n${pipelineResults.map(result => `- ${result}`).join('\n')}\n\n💡 Only Java file changes trigger regeneration - other files are ignored`,
+          text: `🎉 Full pipeline completed successfully!\n\n📋 Pipeline Results:\n${pipelineResults.map(result => `- ${result}`).join('\n')}\n\n💡 Only Java file changes trigger regeneration - other files are ignored\n\n🔧 **Jira Integration:** ${this.config.jiraBaseUrl ? '✅ Configured' : '❌ Not configured (set JIRA_BASE_URL, JIRA_EMAIL, JIRA_API_TOKEN)'}`,
         },
       ],
     };
   }
 
+  // All the existing parsing and documentation generation methods remain the same...
   private async parseJavaFiles(projectPath: string): Promise<ClassSummary[]> {
     const classesSummary: ClassSummary[] = [];
     
@@ -945,6 +1326,7 @@ class JavaDocumentationMCPServer {
     };
   }
 
+  // All the existing OpenAI documentation generation methods remain the same...
   private async generateArchitectureDesign(classesSummary: ClassSummary[], outputFormat: string): Promise<string> {
     this.logInfo(`Generating Architecture Design using OpenAI model: ${this.config.openaiModel}`);
 
@@ -1053,7 +1435,6 @@ Make it suitable for architects and senior developers to understand the overall 
    - Database constraints and indexes
 
   After the PlantUML ER diagram, provide a detailed, human-readable description of the entities and their relationships as depicted in the diagram.
-
 
 4. **Detailed Component Interactions**
    - Controller-Service-Repository interactions
@@ -1173,7 +1554,6 @@ Generate the OpenAPI spec in YAML format. The output must be:
 - Include JSON schema definitions under \`components.schemas\`
 `;
 
-
     try {
       const response = await this.openai.chat.completions.create({
         model: this.config.openaiModel,
@@ -1208,7 +1588,7 @@ Generate the OpenAPI spec in YAML format. The output must be:
   async run() {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    this.logInfo('🚀 Java Documentation MCP Server running on stdio');
+    this.logInfo('🚀 Java Documentation MCP Server with Jira Integration running on stdio');
 
     // Auto-run pipeline if configured
     if (this.config.autoRunPipeline && this.config.microservicePath) {
@@ -1225,13 +1605,13 @@ Generate the OpenAPI spec in YAML format. The output must be:
 
 // Main execution
 async function main() {
-  console.error('\n🔧 Starting AutoDoc.AI MCP Server...');
+  console.error('\n🔧 Starting AutoDoc.AI MCP Server with Jira Integration...');
   console.info(`📍 Current directory: ${process.cwd()}`);
   console.info(`🐛 Node version: ${process.version}`);
   
   const server = new JavaDocumentationMCPServer();
   console.info('✅ Server instance created');
-  console.info('🚀 Sucessfully launched MCP server');
+  console.info('🚀 Successfully launched MCP server');
   
   await server.run();
 }

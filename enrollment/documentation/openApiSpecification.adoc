@@ -1,27 +1,23 @@
-Below is the OpenAPI 3.0 specification in YAML format based on the provided Java Spring Boot application classes. This specification includes details for the `EnrollmentController` and infers details from the class and method annotations.
-
 ```yaml
 openapi: 3.0.0
 info:
   title: Enrollment API
   version: 1.0.0
-  description: API for managing enrollments in the system.
 servers:
   - url: /idp
 paths:
-  /nominatePrimary:
+  /enrollment/nominate-primary:
     post:
-      summary: Nominate a primary user
       tags:
         - Enrollment
+      summary: Nominate a primary user
       operationId: nominatePrimary
       parameters:
         - name: username
           in: query
-          required: false
+          required: true
           schema:
             type: string
-          description: Username to nominate as primary
       responses:
         '200':
           description: Successful operation
@@ -31,9 +27,9 @@ paths:
                 type: string
                 example: "Nomination successful"
         '400':
-          description: Bad request, when the username is missing or invalid
+          description: Bad request
         '401':
-          description: Unauthorized, when the user is not authenticated
+          description: Unauthorized
       security:
         - bearerAuth: []
 components:
@@ -67,19 +63,3 @@ components:
 security:
   - bearerAuth: []
 ```
-
-### Explanation:
-
-1. **Overview Section**: Includes API title, version, and a brief description. The server URL is set to `/idp` as specified.
-
-2. **OpenAPI Specification**:
-   - **Paths**: Defined a POST endpoint `/nominatePrimary`. It includes both a version with and without a `username` parameter. The parameter is optional as per the method signature.
-   - **Responses**: Includes standard responses for success (200) and common errors (400 for bad requests and 401 for unauthorized access).
-
-3. **Security**: A JWT-based security scheme is defined under `components.securitySchemes`. This is applied globally to all endpoints, indicating that a JWT bearer token is required.
-
-4. **Schemas**: `UserResponseDTO` and `Enrollment` schemas are defined under `components.schemas` based on the fields provided in the class definitions. These could be used in future endpoints for request or response bodies.
-
-5. **Tags and Grouping**: Operations are tagged with "Enrollment" based on the controller name, which helps in organizing the endpoints in UI tools like Swagger UI.
-
-This YAML is structured to be human-readable, with proper indentation and logical grouping of elements. It can be validated and used in tools like Swagger Editor, API Gateway, or Postman.
