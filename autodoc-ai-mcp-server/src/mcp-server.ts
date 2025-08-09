@@ -605,13 +605,34 @@ class JavaDocumentationMCPServer {
 
       this.logInfo(`🎫 Jira ticket found: ${commitInfo.ticketNumber}`);
 
+      // Check if release note already exists for this ticket
+      const fileName = `${commitInfo.ticketNumber}.txt`;
+      const filePath = path.join(outputDir, fileName);
+      
+      try {
+        await fs.access(filePath);
+        // File exists, skip generation
+        this.logInfo(`📝 Skipping release note generation since its already exists for ticket ${commitInfo.ticketNumber}`);
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `ℹ️ Release note already exists for ${commitInfo.ticketNumber}\n\n` +
+                    `📁 File: ${fileName}\n` +
+                    `📂 Location: ${filePath}\n\n` +
+                    `💡 Skipping generation to avoid duplicate entries.`,
+            },
+          ],
+        };
+      } catch {
+        // File doesn't exist, continue with generation
+        await fs.mkdir(outputDir, { recursive: true });
+      }
+
       // Fetch Jira issue details
       try {
         const jiraIssue = await this.fetchJiraIssue(commitInfo.ticketNumber);
         this.logInfo(`📋 Fetched Jira issue: ${jiraIssue.key} - ${jiraIssue.fields.summary}`);
-
-        // Create release-notes directory
-        await fs.mkdir(outputDir, { recursive: true });
 
         // Generate release note content
         const release = this.getCurrentQuarter();
@@ -641,15 +662,12 @@ class JavaDocumentationMCPServer {
       } catch (jiraError) {
         this.logError('Jira API call failed', jiraError);
         
-        // Still generate a release note with commit info only
+        // Generate release note with limited info since Jira fetch failed
         const release = this.getCurrentQuarter();
         const releaseNoteContent = `${commitInfo.ticketNumber} & ${commitInfo.message} & ${release}`;
-        
-        await fs.mkdir(outputDir, { recursive: true });
-        const fileName = `${commitInfo.ticketNumber}.txt`;
-        const filePath = path.join(outputDir, fileName);
-        await fs.writeFile(filePath, releaseNoteContent);
 
+        await fs.writeFile(filePath, releaseNoteContent);
+        
         return {
           content: [
             {
@@ -667,29 +685,28 @@ class JavaDocumentationMCPServer {
         };
       }
 
-    } catch (error) {
-      this.logError('Release notes generation failed', error);
+    } catch (err) {
+      this.logError('Release notes generation failed', err);
       
       // Provide more specific error messages based on the type of error
-      let errorMessage = '';
-      if (error instanceof Error) {
-        if (error.message.includes('not a git repository')) {
+      let errorMessage: string;
+      if (err instanceof Error) {
+        if (err.message.includes('not a git repository')) {
           errorMessage = `Directory is not a git repository: ${gitRepoPath}`;
-        } else if (error.message.includes('No commits found')) {
+        } else if (err.message.includes('No commits found')) {
           errorMessage = 'No commits found in the repository';
-        } else if (error.message.includes('Git command failed')) {
-          errorMessage = `Git error: ${error.message}`;
+        } else if (err.message.includes('Git command failed')) {
+          errorMessage = `Git error: ${err.message}`;
         } else {
-          errorMessage = error.message;
+          errorMessage = err.message;
         }
       } else {
-        errorMessage = String(error);
+        errorMessage = String(err);
       }
       
       throw new Error(`Failed to generate release notes: ${errorMessage}`);
     }
   }
-  // Existing methods (calculateSourceHash, shouldRegenerateClassesSummary, etc.) remain the same...
   
   private async calculateSourceHash(projectPath: string): Promise<string> {
     const javaFiles = await this.findJavaFiles(projectPath);

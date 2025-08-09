@@ -12,16 +12,15 @@ const __dirname = path.dirname(__filename);
 const CONFIG = {
   // OpenAI Configuration
   openai: {
-    // apiKey: '',
+    apiKey: process.env.OPENAI_API_KEY,
     model: 'gpt-4-turbo',
   },
   
   // Jira Configuration
   jira: {
-    baseUrl: 'https://sharan99r.atlassian.net', // e.g., https://company.atlassian.net
+    baseUrl: 'https://sharan99r.atlassian.net',
     email: 'sharan99r@gmail.com',
-    // apiKey: ''
-
+    apiToken: process.env.CONFLUENCE_API_TOKEN
   },
   
   // Project paths
@@ -419,7 +418,7 @@ class MCPServerLauncher {
         await new Promise((resolve, reject) => {
           serverProcess.on('close', async (code) => {
             if (code === 0) {
-              console.log('✅ Release notes text files generated successfully');
+              // console.log('✅ Release notes text files generated successfully');
               try {
                 await createAdocSummary();
                 resolve();
@@ -447,7 +446,10 @@ class MCPServerLauncher {
     console.log('📊 FINAL SUMMARY');
     console.log('='.repeat(60));
     
-    console.log(`\n📈 Total Services: ${totalServices}`);
+    // Documentation Generation Summary
+    console.log('\n� Code Documentation Generation');
+    console.log('-'.repeat(30));
+    console.log(`�📈 Total Services: ${totalServices}`);
     console.log(`✅ Successful: ${results.successful.length}`);
     console.log(`❌ Failed: ${results.failed.length}`);
     
@@ -465,10 +467,26 @@ class MCPServerLauncher {
       });
     }
     
+    // Release Notes Summary
+    console.log('\n📝 Release Notes Generation');
+    console.log('-'.repeat(30));
+    if (this.config.documentation.generateReleaseNotes) {
+      console.log(`📍 Status: ${results.failed.length === 0 ? '✅ Generated' : '⚠️ Partial Generation'}`);
+      console.log(`📂 Location: ${path.join(process.cwd(), '..', 'release-notes')}`);
+      console.log(`📄 Files Generated:`);
+      console.log(`   • release-notes.adoc (Summary)`);
+      console.log(`   • Individual release note text files`);
+    } else {
+      console.log(`📍 Status: ⏩ Skipped (not enabled in configuration)`);
+    }
+    
+    // Overall Summary
     const totalTime = results.successful.reduce((sum, svc) => sum + svc.duration, 0) + 
                      results.failed.reduce((sum, svc) => sum + svc.duration, 0);
     
-    console.log(`\n⏱️  Total Processing Time: ${Math.round(totalTime)}s`);
+    console.log('\n📊 Overall Statistics');
+    console.log('-'.repeat(30));
+    console.log(`⏱️  Total Processing Time: ${Math.round(totalTime)}s`);
     console.log(`📊 Success Rate: ${Math.round((results.successful.length / totalServices) * 100)}%`);
     
     console.log('\n' + '='.repeat(60));
