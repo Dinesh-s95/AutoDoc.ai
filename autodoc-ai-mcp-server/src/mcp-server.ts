@@ -9,6 +9,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import fs from 'fs/promises';
 import path from 'path';
+import { spawn } from 'child_process';
 import OpenAI from 'openai';
 import crypto from 'crypto';
 
@@ -32,6 +33,10 @@ interface ServerConfig {
   docFormat: string;
   logLevel: string;
   autoRunPipeline: boolean;
+  // Jira configuration
+  jiraBaseUrl: string;
+  jiraEmail: string;
+  jiraApiToken: string;
 }
 
 // Cache metadata interface
@@ -40,6 +45,31 @@ interface CacheMetadata {
   lastUpdated: string;
   sourceFiles: string[];
   classCount: number;
+}
+
+// Jira issue interface
+interface JiraIssue {
+  id: string;
+  key: string;
+  fields: {
+    summary: string;
+    description?: any;
+    status: {
+      name: string;
+    };
+    issuetype: {
+      name: string;
+    };
+    created: string;
+    updated: string;
+  };
+}
+
+// Git commit info interface
+interface GitCommitInfo {
+  hash: string;
+  message: string;
+  ticketNumber?: string;
 }
 
 class JavaDocumentationMCPServer {
@@ -57,12 +87,16 @@ class JavaDocumentationMCPServer {
       docFormat: process.env.DOC_FORMAT || 'adoc',
       logLevel: process.env.LOG_LEVEL || 'info',
       autoRunPipeline: process.env.AUTO_RUN_PIPELINE === 'true',
+      // Jira configuration
+      jiraBaseUrl: process.env.JIRA_BASE_URL || '',
+      jiraEmail: process.env.JIRA_EMAIL || '',
+      jiraApiToken: process.env.JIRA_API_TOKEN || '',
     };
 
     this.server = new Server(
       {
         name: 'java-documentation-server',
-        version: '2.0.0',
+        version: '2.1.0',
       },
       {
         capabilities: {
@@ -78,7 +112,6 @@ class JavaDocumentationMCPServer {
     }
 
     this.openai = new OpenAI({
-      // baseURL: 'https://openrouter.ai/api/v1',
       apiKey: this.config.openaiApiKey,
     });
 
@@ -87,6 +120,7 @@ class JavaDocumentationMCPServer {
       microservicePath: this.config.microservicePath,
       outputPath: this.config.outputPath,
       format: this.config.docFormat,
+      jiraConfigured: !!(this.config.jiraBaseUrl && this.config.jiraEmail && this.config.jiraApiToken),
     });
 
     this.setupToolHandlers();
@@ -169,8 +203,30 @@ class JavaDocumentationMCPServer {
           },
         },
         {
+          name: 'generate_release_notes',
+          description: 'Generate release notes based on the last commit with Jira ticket number (format: TICKET-123 commit message)',
+          inputSchema: {
+            type: 'object',
+            properties: {
+              projectPath: {
+                type: 'string',
+                description: 'Path to the git repository (optional, uses env MICROSERVICE_PATH if not provided)',
+              },
+              outputDir: {
+                type: 'string',
+                description: 'Directory to save release notes (optional, uses env OUTPUT_PATH/release-notes)',
+              },
+              branch: {
+                type: 'string',
+                description: 'Git branch to check for commits (default: current branch)',
+              },
+            },
+            required: [],
+          },
+        },
+        {
           name: 'full_pipeline',
-          description: 'Complete pipeline: analyze Java project and generate documentation (with smart caching)',
+          description: 'Complete pipeline: analyze Java project, generate documentation, and create release notes (with smart caching)',
           inputSchema: {
             type: 'object',
             properties: {
@@ -190,6 +246,10 @@ class JavaDocumentationMCPServer {
               forceRegenerate: {
                 type: 'boolean',
                 description: 'Force complete regeneration ignoring cache (default: false)',
+              },
+              generateReleaseNotes: {
+                type: 'boolean',
+                description: 'Whether to generate release notes (default: true)',
               },
             },
             required: [],
@@ -243,6 +303,9 @@ class JavaDocumentationMCPServer {
           case 'generate_documentation':
             result = await this.generateDocumentation(request.params.arguments);
             break;
+          case 'generate_release_notes':
+            result = await this.generateReleaseNotes(request.params.arguments);
+            break;
           case 'full_pipeline':
             result = await this.fullPipeline(request.params.arguments);
             break;
@@ -253,13 +316,13 @@ class JavaDocumentationMCPServer {
             result = await this.getCacheStatus(request.params.arguments);
             break;
           default:
-            const availableTools = ['analyze_java_project', 'generate_documentation', 'full_pipeline', 'get_config', 'get_cache_status'];
+            const availableTools = ['analyze_java_project', 'generate_documentation', 'generate_release_notes', 'full_pipeline', 'get_config', 'get_cache_status'];
             this.logError(`Unknown tool requested: ${request.params.name}. Available tools: ${availableTools.join(', ')}`);
             result = {
               content: [
                 {
                   type: 'text',
-                  text: `❌ Error: Unknown tool: ${request.params.name}\n\n💡 Available tools:\n${availableTools.map(tool => `- ${tool}`).join('\n')}\n\n💡 **Troubleshooting Tips:**\n- Check that your project path exists and contains source files\n- Verify your OpenAI API key is valid and starts with "sk-"\n- Ensure you have write permissions to the output directory\n- For Java projects, make sure you have .java files in src/ directories\n- Check that your OpenAI account has available credits`,
+                  text: `❌ Error: Unknown tool: ${request.params.name}\n\n💡 Available tools:\n${availableTools.map(tool => `- ${tool}`).join('\n')}\n\n💡 **Troubleshooting Tips:**\n- Check that your project path exists and contains source files\n- Verify your OpenAI API key is valid and starts with "sk-"\n- Ensure you have write permissions to the output directory\n- For Java projects, make sure you have .java files in src/ directories\n- Check that your OpenAI account has available credits\n- For Jira integration, ensure JIRA_BASE_URL, JIRA_EMAIL, and JIRA_API_TOKEN are set`,
                 },
               ],
               isError: true,
@@ -280,7 +343,7 @@ class JavaDocumentationMCPServer {
           content: [
             {
               type: 'text',
-              text: `❌ Error executing ${request.params.name}: ${error instanceof Error ? error.message : String(error)}\n\n💡 **Troubleshooting Tips:**\n- Check that your project path exists and contains source files\n- Verify your OpenAI API key is valid and starts with "sk-"\n- Ensure you have write permissions to the output directory\n- For Java projects, make sure you have .java files in src/ directories\n- Check that your OpenAI account has available credits`,
+              text: `❌ Error executing ${request.params.name}: ${error instanceof Error ? error.message : String(error)}\n\n💡 **Troubleshooting Tips:**\n- Check that your project path exists and contains source files\n- Verify your OpenAI API key is valid and starts with "sk-"\n- Ensure you have write permissions to the output directory\n- For Java projects, make sure you have .java files in src/ directories\n- Check that your OpenAI account has available credits\n- For Jira integration, ensure JIRA_BASE_URL, JIRA_EMAIL, and JIRA_API_TOKEN are set`,
             },
           ],
           isError: true,
@@ -295,6 +358,7 @@ class JavaDocumentationMCPServer {
     const configDisplay = {
       ...this.config,
       openaiApiKey: this.config.openaiApiKey ? '***CONFIGURED***' : '***NOT SET***',
+      jiraApiToken: this.config.jiraApiToken ? '***CONFIGURED***' : '***NOT SET***',
     };
 
     return {
@@ -377,6 +441,178 @@ class JavaDocumentationMCPServer {
     }
   }
 
+  // Git and Jira integration methods
+  private async getLastCommitFromBranch(projectPath: string, branch?: string): Promise<GitCommitInfo> {
+    return new Promise((resolve, reject) => {
+      const gitArgs = ['log', '-1', '--pretty=format:%H|%s'];
+      if (branch) {
+        gitArgs.push(branch);
+      }
+
+      const git = spawn('git', gitArgs, { 
+        cwd: projectPath,
+        stdio: 'pipe'
+      });
+
+      let output = '';
+      let error = '';
+
+      git.stdout.on('data', (data) => {
+        output += data.toString();
+      });
+
+      git.stderr.on('data', (data) => {
+        error += data.toString();
+      });
+
+      git.on('close', (code) => {
+        if (code !== 0) {
+          reject(new Error(`Git command failed with code ${code}: ${error}`));
+          return;
+        }
+
+        const [hash, message] = output.trim().split('|');
+        
+        // Extract ticket number from commit message (format: TICKET-123 commit message)
+        const ticketMatch = message.match(/^([A-Z]+[-_][0-9]+)/);
+        const ticketNumber = ticketMatch ? ticketMatch[1].replace('_', '-') : undefined;
+
+        resolve({
+          hash,
+          message,
+          ticketNumber
+        });
+      });
+
+      git.on('error', (err) => {
+        reject(new Error(`Failed to execute git command: ${err.message}`));
+      });
+    });
+  }
+
+  private async fetchJiraIssue(ticketNumber: string): Promise<JiraIssue> {
+    if (!this.config.jiraBaseUrl || !this.config.jiraEmail || !this.config.jiraApiToken) {
+      throw new Error('Jira configuration missing. Please set JIRA_BASE_URL, JIRA_EMAIL, and JIRA_API_TOKEN environment variables.');
+    }
+
+    const auth = Buffer.from(`${this.config.jiraEmail}:${this.config.jiraApiToken}`).toString('base64');
+    
+    try {
+      const response = await fetch(`${this.config.jiraBaseUrl}/rest/api/3/issue/${ticketNumber}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Basic ${auth}`,
+          'Accept': 'application/json',
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          throw new Error(`Jira ticket ${ticketNumber} not found`);
+        } else if (response.status === 401) {
+          throw new Error('Jira authentication failed. Please check your credentials.');
+        } else {
+          throw new Error(`Jira API error: ${response.status} ${response.statusText}`);
+        }
+      }
+
+      const issue = await response.json() as JiraIssue;
+      return issue;
+    } catch (error) {
+      if (error instanceof Error) {
+        throw error;
+      }
+      throw new Error(`Failed to fetch Jira issue: ${String(error)}`);
+    }
+  }
+
+  private getCurrentQuarter(): string {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1; // getMonth() returns 0-11
+    const quarter = Math.ceil(month / 3);
+    return `${year}.${quarter}`;
+  }
+
+  private async generateReleaseNotes(args: any): Promise<CallToolResult> {
+    const projectPath = args?.projectPath || this.config.microservicePath;
+    const outputDir = args?.outputDir || path.join(this.config.outputPath, 'release-notes');
+    const branch = args?.branch;
+
+    if (!projectPath) {
+      throw new Error('projectPath is required (either as parameter or MICROSERVICE_PATH env var)');
+    }
+
+    this.logInfo(`🏷️  Generating release notes for project: ${projectPath}`);
+
+    try {
+      // Check if project path exists and is a git repository
+      await fs.access(projectPath);
+      await fs.access(path.join(projectPath, '.git'));
+    } catch (error) {
+      throw new Error(`Project path does not exist or is not a git repository: ${projectPath}`);
+    }
+
+    try {
+      // Get the last commit information
+      const commitInfo = await this.getLastCommitFromBranch(projectPath, branch);
+      this.logInfo(`📝 Last commit: ${commitInfo.hash.substring(0, 8)} - ${commitInfo.message}`);
+
+      if (!commitInfo.ticketNumber) {
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `⚠️  No Jira ticket number found in the last commit message.\n\nCommit: ${commitInfo.hash.substring(0, 8)} - "${commitInfo.message}"\n\n💡 Expected format: "TICKET-123 your commit message" where TICKET-123 is your Jira ticket number.`,
+            },
+          ],
+        };
+      }
+
+      this.logInfo(`🎫 Jira ticket found: ${commitInfo.ticketNumber}`);
+
+      // Fetch Jira issue details
+      const jiraIssue = await this.fetchJiraIssue(commitInfo.ticketNumber);
+      this.logInfo(`📋 Fetched Jira issue: ${jiraIssue.key} - ${jiraIssue.fields.summary}`);
+
+      // Create release-notes directory
+      await fs.mkdir(outputDir, { recursive: true });
+
+      // Generate release note content
+      const quarter = this.getCurrentQuarter();
+      const releaseNoteContent = `${jiraIssue.key} & ${jiraIssue.fields.summary} & ${quarter}`;
+
+      // Save release note file
+      const fileName = `${jiraIssue.key}.txt`;
+      const filePath = path.join(outputDir, fileName);
+      await fs.writeFile(filePath, releaseNoteContent);
+
+      this.logInfo(`📄 Release note generated: ${filePath}`);
+
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `✅ Release note generated successfully!\n\n` +
+                  `🎫 Jira Ticket: ${jiraIssue.key}\n` +
+                  `📋 Title: ${jiraIssue.fields.summary}\n` +
+                  `📅 Quarter: ${quarter}\n` +
+                  `📁 File: ${fileName}\n` +
+                  `📂 Location: ${filePath}\n\n` +
+                  `📝 Content: ${releaseNoteContent}`,
+          },
+        ],
+      };
+
+    } catch (error) {
+      this.logError('Release notes generation failed', error);
+      throw new Error(`Failed to generate release notes: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+
+  // Existing methods (calculateSourceHash, shouldRegenerateClassesSummary, etc.) remain the same...
+  
   private async calculateSourceHash(projectPath: string): Promise<string> {
     const javaFiles = await this.findJavaFiles(projectPath);
     
@@ -678,6 +914,7 @@ class JavaDocumentationMCPServer {
     const outputDir = args?.outputDir || this.config.outputPath;
     const outputFormat = args?.outputFormat || this.config.docFormat;
     const forceRegenerate = args?.forceRegenerate || false;
+    const generateReleaseNotes = args?.generateReleaseNotes !== false; // Default to true
     
     if (!projectPath) {
       throw new Error('projectPath is required (either as parameter or MICROSERVICE_PATH env var)');
@@ -759,18 +996,55 @@ class JavaDocumentationMCPServer {
       pipelineResults.push('✅ Documentation is up-to-date (skipped regeneration)');
     }
 
+    // Step 3: Generate release notes if requested and Jira is configured
+    if (generateReleaseNotes) {
+      this.logInfo('🏷️  Step 3: Generating release notes...');
+      try {
+        const releaseNotesResult = await this.generateReleaseNotes({
+          projectPath,
+          outputDir: path.join(outputDir, 'release-notes')
+        });
+        
+        // Extract success message from release notes result
+        const releaseNotesText = releaseNotesResult.content[0]?.type === 'text' ? 
+          releaseNotesResult.content[0].text : '';
+        
+        if (releaseNotesText.startsWith('✅')) {
+          pipelineResults.push('🏷️  Generated release notes successfully');
+          // Extract ticket info from the result
+          const ticketMatch = releaseNotesText.match(/🎫 Jira Ticket: ([A-Z]+-\d+)/);
+          if (ticketMatch) {
+            pipelineResults.push(`📋 Ticket: ${ticketMatch[1]}`);
+          }
+        } else {
+          pipelineResults.push('⚠️  Release notes: ' + releaseNotesText.split('\n')[0]);
+        }
+      } catch (error) {
+        this.logError('Release notes generation failed', error);
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        if (errorMsg.includes('Jira configuration missing')) {
+          pipelineResults.push('⚠️  Release notes skipped (Jira not configured)');
+        } else {
+          pipelineResults.push(`❌ Release notes failed: ${errorMsg}`);
+        }
+      }
+    } else {
+      pipelineResults.push('⏭️  Release notes generation skipped');
+    }
+
     this.logInfo('\n✅ Full pipeline completed successfully');
 
     return {
       content: [
         {
           type: 'text',
-          text: `🎉 Full pipeline completed successfully!\n\n📋 Pipeline Results:\n${pipelineResults.map(result => `- ${result}`).join('\n')}\n\n💡 Only Java file changes trigger regeneration - other files are ignored`,
+          text: `🎉 Full pipeline completed successfully!\n\n📋 Pipeline Results:\n${pipelineResults.map(result => `- ${result}`).join('\n')}\n\n💡 Only Java file changes trigger regeneration - other files are ignored\n\n🔧 **Jira Integration:** ${this.config.jiraBaseUrl ? '✅ Configured' : '❌ Not configured (set JIRA_BASE_URL, JIRA_EMAIL, JIRA_API_TOKEN)'}`,
         },
       ],
     };
   }
 
+  // All the existing parsing and documentation generation methods remain the same...
   private async parseJavaFiles(projectPath: string): Promise<ClassSummary[]> {
     const classesSummary: ClassSummary[] = [];
     
@@ -945,6 +1219,7 @@ class JavaDocumentationMCPServer {
     };
   }
 
+  // All the existing OpenAI documentation generation methods remain the same...
   private async generateArchitectureDesign(classesSummary: ClassSummary[], outputFormat: string): Promise<string> {
     this.logInfo(`Generating Architecture Design using OpenAI model: ${this.config.openaiModel}`);
 
@@ -1053,7 +1328,6 @@ Make it suitable for architects and senior developers to understand the overall 
    - Database constraints and indexes
 
   After the PlantUML ER diagram, provide a detailed, human-readable description of the entities and their relationships as depicted in the diagram.
-
 
 4. **Detailed Component Interactions**
    - Controller-Service-Repository interactions
@@ -1173,7 +1447,6 @@ Generate the OpenAPI spec in YAML format. The output must be:
 - Include JSON schema definitions under \`components.schemas\`
 `;
 
-
     try {
       const response = await this.openai.chat.completions.create({
         model: this.config.openaiModel,
@@ -1208,7 +1481,7 @@ Generate the OpenAPI spec in YAML format. The output must be:
   async run() {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    this.logInfo('🚀 Java Documentation MCP Server running on stdio');
+    this.logInfo('🚀 Java Documentation MCP Server with Jira Integration running on stdio');
 
     // Auto-run pipeline if configured
     if (this.config.autoRunPipeline && this.config.microservicePath) {
@@ -1225,13 +1498,13 @@ Generate the OpenAPI spec in YAML format. The output must be:
 
 // Main execution
 async function main() {
-  console.error('\n🔧 Starting AutoDoc.AI MCP Server...');
+  console.error('\n🔧 Starting AutoDoc.AI MCP Server with Jira Integration...');
   console.info(`📍 Current directory: ${process.cwd()}`);
   console.info(`🐛 Node version: ${process.version}`);
   
   const server = new JavaDocumentationMCPServer();
   console.info('✅ Server instance created');
-  console.info('🚀 Sucessfully launched MCP server');
+  console.info('🚀 Successfully launched MCP server');
   
   await server.run();
 }

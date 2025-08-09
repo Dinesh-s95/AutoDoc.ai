@@ -12,8 +12,16 @@ const __dirname = path.dirname(__filename);
 const CONFIG = {
   // OpenAI Configuration
   openai: {
-    apiKey: process.env.OPENAI_API_KEY,
- },
+    apiKey: process.env.OPENAI_API_KEY || 'sk-your-openai-api-key-here',
+    model: 'gpt-4-turbo',
+  },
+  
+  // Jira Configuration
+  jira: {
+    baseUrl: 'https://sharan99r.atlassian.net', // e.g., https://company.atlassian.net
+    email: 'sharan99r@gmail.com',
+    apiToken: 'ATATT3xFfGF0aOGqDQfxsCI9Zl2RHA_jBzhr5GLhZlw2eQIryWgfuXh-ovJ0vaOLkUdojxW2YCrVeHNRnaAlj4N23E-f10W1ppXRxDqfhD3qU1Xk2-DrJ-CCfQwf8X8zMw021Ea5jYyCaOl0ZriLHspcSMBfiLpUSD7c8ZTBX7If3jbaP22kz0s=828D2C0B',
+  },
   
   // Project paths
   paths: {
@@ -28,6 +36,7 @@ const CONFIG = {
     includeSequenceDiagrams: true,
     includeERDiagrams: true,
     includeReadme: true,
+    generateReleaseNotes: true, // New option for release notes
   },
   
   // Server settings
@@ -46,15 +55,31 @@ class MCPServerLauncher {
   async validateConfiguration() {
     console.log('🔍 Validating configuration...');
 
-      console.log('\n⚙️  Configuration Summary:');
-      console.log(`  🎯 Microservice Path: ${path.resolve(this.config.paths.microservicePath)}`);
-      console.log(`  📁 Output Path: ${path.resolve(this.config.paths.outputPath)}`);
-      console.log(`  📝 Documentation Format: ${this.config.documentation.format.toUpperCase()}`);
-      console.log(`  🤖 OpenAI Model: ${this.config.openai.model}`);
+    console.log('\n⚙️  Configuration Summary:');
+    console.log(`  🎯 Microservice Path: ${path.resolve(this.config.paths.microservicePath)}`);
+    console.log(`  📁 Output Path: ${path.resolve(this.config.paths.outputPath)}`);
+    console.log(`  📝 Documentation Format: ${this.config.documentation.format.toUpperCase()}`);
+    console.log(`  🤖 OpenAI Model: ${this.config.openai.model}`);
+    console.log(`  🔗 Jira Integration: ${this.config.jira.baseUrl !== 'https://your-domain.atlassian.net' ? '✅ Configured' : '❌ Not configured'}`);
+    console.log(`  🏷️  Release Notes: ${this.config.documentation.generateReleaseNotes ? '✅ Enabled' : '❌ Disabled'}`);
     
     // Check if OpenAI API key is set
     if (!this.config.openai.apiKey || this.config.openai.apiKey === 'sk-your-openai-api-key-here') {
-      throw new Error('❌ Please set your OpenAI API key in the CONFIG object');
+      throw new Error('❌ Please set your OpenAI API key in the CONFIG object or OPENAI_API_KEY environment variable');
+    }
+
+    // Check Jira configuration if release notes are enabled
+    if (this.config.documentation.generateReleaseNotes) {
+      const jiraConfigured = this.config.jira.baseUrl !== 'https://your-domain.atlassian.net' &&
+                            this.config.jira.email !== 'your-email@company.com' &&
+                            this.config.jira.apiToken !== 'your-jira-api-token';
+      
+      if (!jiraConfigured) {
+        console.log('⚠️  Jira not configured - release notes will be skipped');
+        console.log('💡 To enable release notes, configure JIRA_BASE_URL, JIRA_EMAIL, and JIRA_API_TOKEN');
+      } else {
+        console.log('✅ Jira configuration appears valid');
+      }
     }
 
     // Check if microservice path exists
@@ -92,7 +117,11 @@ class MCPServerLauncher {
         OUTPUT_PATH: this.config.paths.outputPath,
         DOC_FORMAT: this.config.documentation.format,
         LOG_LEVEL: this.config.server.logLevel,
-        EXIT_ON_TOOL_COMPLETE: 'true' // Ensures server exits after tool call
+        EXIT_ON_TOOL_COMPLETE: 'true', // Ensures server exits after tool call
+        // Jira configuration
+        JIRA_BASE_URL: this.config.jira.baseUrl,
+        JIRA_EMAIL: this.config.jira.email,
+        JIRA_API_TOKEN: this.config.jira.apiToken,
         // AUTO_RUN_PIPELINE intentionally omitted to avoid double execution
       };
 
@@ -120,7 +149,8 @@ class MCPServerLauncher {
               arguments: {
                 projectPath: this.config.paths.microservicePath,
                 outputDir: this.config.paths.outputPath,
-                outputFormat: this.config.documentation.format
+                outputFormat: this.config.documentation.format,
+                generateReleaseNotes: this.config.documentation.generateReleaseNotes
               }
             }
           });
@@ -144,7 +174,8 @@ class MCPServerLauncher {
               arguments: {
                 projectPath: this.config.paths.microservicePath,
                 outputDir: this.config.paths.outputPath,
-                outputFormat: this.config.documentation.format
+                outputFormat: this.config.documentation.format,
+                generateReleaseNotes: this.config.documentation.generateReleaseNotes
               }
             }
           });
@@ -156,7 +187,6 @@ class MCPServerLauncher {
           console.log('🔧 Server Log:', message.trim());
         }
       });
-
 
       let settled = false;
       const settle = (code) => {
@@ -174,8 +204,10 @@ class MCPServerLauncher {
 
       // Set a timeout for the documentation generation
       setTimeout(() => {
-        serverProcess.kill();
-        reject(new Error('Documentation generation timed out after 5 minutes'));
+        if (!settled) {
+          serverProcess.kill();
+          reject(new Error('Documentation generation timed out after 5 minutes'));
+        }
       }, 300000); // 5 minutes
     });
   }
@@ -190,7 +222,11 @@ class MCPServerLauncher {
       MICROSERVICE_PATH: this.config.paths.microservicePath,
       OUTPUT_PATH: this.config.paths.outputPath,
       DOC_FORMAT: this.config.documentation.format,
-      LOG_LEVEL: this.config.server.logLevel
+      LOG_LEVEL: this.config.server.logLevel,
+      // Jira configuration
+      JIRA_BASE_URL: this.config.jira.baseUrl,
+      JIRA_EMAIL: this.config.jira.email,
+      JIRA_API_TOKEN: this.config.jira.apiToken,
     };
 
     this.serverProcess = spawn('node', [this.config.paths.serverPath], {
@@ -223,17 +259,15 @@ class MCPServerLauncher {
   }
 
   async displayResults() {
-    // console.log('\n Generated Documentation Files:');
-    
     try {      
-      // console.log(`\n📂 Complete destination path: ${path.resolve(this.config.paths.outputPath)}`);
-      
       // Display configuration summary
       console.log('\n⚙️  Configuration Summary:');
       console.log(`  🎯 Microservice Path: ${path.resolve(this.config.paths.microservicePath)}`);
       console.log(`  📁 Output Path: ${path.resolve(this.config.paths.outputPath)}`);
       console.log(`  📝 Documentation Format: ${this.config.documentation.format.toUpperCase()}`);
       console.log(`  🤖 OpenAI Model: ${this.config.openai.model}`);
+      console.log(`  🔗 Jira Integration: ${this.config.jira.baseUrl !== 'https://your-domain.atlassian.net' ? '✅ Configured' : '❌ Not configured'}`);
+      console.log(`  🏷️  Release Notes: ${this.config.documentation.generateReleaseNotes ? '✅ Enabled' : '❌ Disabled'}`);
       
     } catch (error) {
       console.error('❌ Error reading output directory:', error.message);
@@ -338,12 +372,47 @@ class MCPServerLauncher {
     
     console.log('\n' + '='.repeat(60));
   }
+
+  async testJiraConnection() {
+    console.log('🔍 Testing Jira connection...');
+    
+    if (this.config.jira.baseUrl === 'https://your-domain.atlassian.net' ||
+        this.config.jira.email === 'your-email@company.com' ||
+        this.config.jira.apiToken === 'your-jira-api-token') {
+      console.log('❌ Jira not configured. Please update the CONFIG object with your Jira details.');
+      return false;
+    }
+
+    try {
+      const auth = Buffer.from(`${this.config.jira.email}:${this.config.jira.apiToken}`).toString('base64');
+      
+      const response = await fetch(`${this.config.jira.baseUrl}/rest/api/3/myself`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Basic ${auth}`,
+          'Accept': 'application/json',
+        }
+      });
+
+      if (response.ok) {
+        const user = await response.json();
+        console.log(`✅ Jira connection successful! Logged in as: ${user.displayName} (${user.emailAddress})`);
+        return true;
+      } else {
+        console.log(`❌ Jira connection failed: ${response.status} ${response.statusText}`);
+        return false;
+      }
+    } catch (error) {
+      console.log(`❌ Jira connection error: ${error.message}`);
+      return false;
+    }
+  }
 }
 
 // Main execution function
 async function main() {
-  console.log('🎯 Java Documentation MCP Server Launcher');
-  console.log('==========================================\n');
+  console.log('🎯 Java Documentation MCP Server Launcher with Jira Integration');
+  console.log('================================================================\n');
 
   const launcher = new MCPServerLauncher(CONFIG);
 
@@ -376,17 +445,42 @@ async function main() {
         await launcher.startInteractiveModeServer();
         break;
 
+      case 'test-jira':
+        await launcher.testJiraConnection();
+        break;
+
       case 'config':
         console.log('⚙️  Current Configuration:');
-        console.log(JSON.stringify(CONFIG, null, 2));
+        const configDisplay = {
+          ...CONFIG,
+          openai: {
+            ...CONFIG.openai,
+            apiKey: CONFIG.openai.apiKey.startsWith('sk-') ? '***CONFIGURED***' : '***NOT SET***'
+          },
+          jira: {
+            ...CONFIG.jira,
+            apiToken: CONFIG.jira.apiToken !== 'your-jira-api-token' ? '***CONFIGURED***' : '***NOT SET***'
+          }
+        };
+        console.log(JSON.stringify(configDisplay, null, 2));
         break;
 
       default:
         console.log('📖 Usage:');
-        console.log('  node launcher.js generate  - Generate documentation and exit');
-        console.log('  node launcher.js all       - Generate documentation for all services');
-        console.log('  node launcher.js server    - Start interactive MCP server');
-        console.log('  node launcher.js config    - Display current configuration');
+        console.log('  node launcher.js generate     - Generate documentation and exit');
+        console.log('  node launcher.js all          - Generate documentation for all services');
+        console.log('  node launcher.js server       - Start interactive MCP server');
+        console.log('  node launcher.js test-jira    - Test Jira connection');
+        console.log('  node launcher.js config       - Display current configuration');
+        console.log('\n🏷️  Release Notes Feature:');
+        console.log('  • Automatically extracts Jira ticket numbers from commit messages');
+        console.log('  • Expected format: "TICKET-123 your commit message"');
+        console.log('  • Fetches ticket title from Jira API');
+        console.log('  • Creates release notes in format: "TICKET-123 & Title & 2025.3"');
+        console.log('\n🔧 Jira Configuration:');
+        console.log('  • Set JIRA_BASE_URL (e.g., https://company.atlassian.net)');
+        console.log('  • Set JIRA_EMAIL (your Atlassian email)');
+        console.log('  • Set JIRA_API_TOKEN (generate from Atlassian account settings)');
         console.log('\n💡 Edit the CONFIG object in this file to customize settings');
         break;
     }
