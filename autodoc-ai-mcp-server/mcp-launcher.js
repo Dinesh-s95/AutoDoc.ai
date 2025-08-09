@@ -12,7 +12,7 @@ const __dirname = path.dirname(__filename);
 const CONFIG = {
   // OpenAI Configuration
   openai: {
-    apiKey: process.env.OPENAI_API_KEY || 'sk-your-openai-api-key-here',
+    // apiKey: '',
     model: 'gpt-4-turbo',
   },
   
@@ -20,7 +20,8 @@ const CONFIG = {
   jira: {
     baseUrl: 'https://sharan99r.atlassian.net', // e.g., https://company.atlassian.net
     email: 'sharan99r@gmail.com',
-    apiToken: 'ATATT3xFfGF0aOGqDQfxsCI9Zl2RHA_jBzhr5GLhZlw2eQIryWgfuXh-ovJ0vaOLkUdojxW2YCrVeHNRnaAlj4N23E-f10W1ppXRxDqfhD3qU1Xk2-DrJ-CCfQwf8X8zMw021Ea5jYyCaOl0ZriLHspcSMBfiLpUSD7c8ZTBX7If3jbaP22kz0s=828D2C0B',
+    // apiKey: ''
+
   },
   
   // Project paths
@@ -150,7 +151,7 @@ class MCPServerLauncher {
                 projectPath: this.config.paths.microservicePath,
                 outputDir: this.config.paths.outputPath,
                 outputFormat: this.config.documentation.format,
-                generateReleaseNotes: this.config.documentation.generateReleaseNotes
+                generateReleaseNotes: false // Disable release notes during individual service processing
               }
             }
           });
@@ -175,7 +176,7 @@ class MCPServerLauncher {
                 projectPath: this.config.paths.microservicePath,
                 outputDir: this.config.paths.outputPath,
                 outputFormat: this.config.documentation.format,
-                generateReleaseNotes: this.config.documentation.generateReleaseNotes
+                generateReleaseNotes: false // Disable release notes during service processing
               }
             }
           });
@@ -335,6 +336,106 @@ class MCPServerLauncher {
       // Restore original config
       this.config.paths.microservicePath = originalMicroservicePath;
       this.config.paths.outputPath = originalOutputPath;
+    }
+
+    // Generate release notes at the end for all services
+    if (this.config.documentation.generateReleaseNotes) {
+      console.log('\n📝 Final Step: Generating Release Notes for All Services...');
+      console.log('-'.repeat(70));
+      
+      try {
+        // First generate the text file
+        const releaseNotesCommand = JSON.stringify({
+          jsonrpc: '2.0',
+          id: 1,
+          method: 'tools/call',
+          params: {
+            name: 'generate_release_notes',
+            arguments: {
+              outputDir: '../release-notes'
+            }
+          }
+        });
+
+        // After generating the text file, create an AsciiDoc summary
+        const createAdocSummary = async () => {
+          const releaseNotesDir = path.join(process.cwd(), '..', 'release-notes');
+          const files = await fs.readdir(releaseNotesDir);
+          const txtFiles = files.filter(f => f.endsWith('.txt'));
+          
+          let adocContent = `= Release Notes Summary
+:toc: left
+:toclevels: 3
+:icons: font
+
+== Current Release Notes
+
+[cols="2,3,1", options="header"]
+|===
+|Ticket |Description |Release
+`;
+
+          for (const file of txtFiles) {
+            const content = await fs.readFile(path.join(releaseNotesDir, file), 'utf-8');
+            const [ticketId, description, quarter] = content.split(' & ');
+            // Create Jira link using the configured base URL
+            const jiraLink = `${this.config.jira.baseUrl}/browse/${ticketId}`;
+            adocContent += `
+|link:${jiraLink}[${ticketId}] |${description} |${quarter}`;
+          }
+
+          adocContent += '\n|===\n';
+          
+          // Write the AsciiDoc file
+          await fs.writeFile(path.join(releaseNotesDir, 'release-notes.adoc'), adocContent);
+          console.log('✅ Generated AsciiDoc summary: release-notes.adoc');
+        };
+
+        // Start a new server instance for release notes
+        const env = {
+          ...process.env,
+          OPENAI_API_KEY: this.config.openai.apiKey,
+          OPENAI_MODEL: this.config.openai.model,
+          MICROSERVICE_PATH: this.config.paths.microservicePath,
+          OUTPUT_PATH: '../release-notes',
+          DOC_FORMAT: this.config.documentation.format,
+          LOG_LEVEL: this.config.server.logLevel,
+          EXIT_ON_TOOL_COMPLETE: 'true',
+          JIRA_BASE_URL: this.config.jira.baseUrl,
+          JIRA_EMAIL: this.config.jira.email,
+          JIRA_API_TOKEN: this.config.jira.apiToken,
+        };
+
+        const serverProcess = spawn('node', [this.config.paths.serverPath], {
+          env,
+          stdio: ['pipe', 'pipe', 'pipe']
+        });
+
+        serverProcess.stdin.write(releaseNotesCommand + '\n');
+
+        serverProcess.stdout.on('data', (data) => console.log(data.toString()));
+        serverProcess.stderr.on('data', (data) => console.log('🔧 Server Log:', data.toString().trim()));
+
+        await new Promise((resolve, reject) => {
+          serverProcess.on('close', async (code) => {
+            if (code === 0) {
+              console.log('✅ Release notes text files generated successfully');
+              try {
+                await createAdocSummary();
+                resolve();
+              } catch (err) {
+                console.error('❌ Error generating AsciiDoc summary:', err.message);
+                reject(err);
+              }
+            } else {
+              console.error('❌ Failed to generate release notes');
+              reject(new Error(`Release notes generation failed with code ${code}`));
+            }
+          });
+        });
+      } catch (error) {
+        console.error('❌ Error in release notes generation:', error.message);
+      }
     }
 
     // Display final summary

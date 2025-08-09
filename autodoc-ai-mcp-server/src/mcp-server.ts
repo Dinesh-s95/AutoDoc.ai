@@ -144,7 +144,21 @@ class JavaDocumentationMCPServer {
   }
 
   private logError(message: string, data?: any) {
-    this.log('error', message, data);
+    // Handle Error objects specially to extract useful information
+    if (data instanceof Error) {
+      this.log('error', message, {
+        errorMessage: data.message,
+        stack: data.stack?.split('\n'),
+        name: data.name
+      });
+    } else if (data !== undefined) {
+      // For non-Error objects, try to ensure they're loggable
+      this.log('error', message, 
+        typeof data === 'object' ? JSON.parse(JSON.stringify(data)) : String(data)
+      );
+    } else {
+      this.log('error', message);
+    }
   }
 
   private logDebug(message: string, data?: any) {
@@ -441,13 +455,12 @@ class JavaDocumentationMCPServer {
     }
   }
 
-  // Git and Jira integration methods
   private async getLastCommitFromBranch(projectPath: string, branch?: string): Promise<GitCommitInfo> {
+    // Get the commit information in a single command
     return new Promise((resolve, reject) => {
-      const gitArgs = ['log', '-1', '--pretty=format:%H|%s'];
-      if (branch) {
-        gitArgs.push(branch);
-      }
+      const gitArgs = ['log', '-1', '--pretty=format:%H|%s', ...(branch ? [branch] : [])];
+
+      this.logDebug(`Executing git command: git ${gitArgs.join(' ')} in ${projectPath}`);
 
       const git = spawn('git', gitArgs, { 
         cwd: projectPath,
@@ -466,16 +479,37 @@ class JavaDocumentationMCPServer {
       });
 
       git.on('close', (code) => {
+        this.logDebug(`Git command finished with code ${code}, output: "${output.trim()}", error: "${error.trim()}"`);
+        
         if (code !== 0) {
-          reject(new Error(`Git command failed with code ${code}: ${error}`));
+          const errorMessage = error.trim() || `Git command failed with exit code ${code}`;
+          this.logError(`Git command failed with code ${code}: ${errorMessage}`);
+          reject(new Error(`Git command failed with code ${code}: ${errorMessage}`));
           return;
         }
 
-        const [hash, message] = output.trim().split('|');
+        if (!output.trim()) {
+          this.logError('Git command returned empty output - no commits found');
+          reject(new Error('No commits found in the repository'));
+          return;
+        }
+
+        const parts = output.trim().split('|');
+        if (parts.length < 2) {
+          this.logError(`Invalid git output format: "${output.trim()}"`);
+          reject(new Error(`Invalid git log output format: "${output.trim()}"`));
+          return;
+        }
+
+        const [hash, message] = parts;
+        
+        this.logDebug(`Parsed commit: hash="${hash}", message="${message}"`);
         
         // Extract ticket number from commit message (format: TICKET-123 commit message)
         const ticketMatch = message.match(/^([A-Z]+[-_][0-9]+)/);
         const ticketNumber = ticketMatch ? ticketMatch[1].replace('_', '-') : undefined;
+        
+        this.logDebug(`Extracted ticket number: ${ticketNumber || 'none'}`);
 
         resolve({
           hash,
@@ -485,6 +519,7 @@ class JavaDocumentationMCPServer {
       });
 
       git.on('error', (err) => {
+        this.logError(`Failed to execute git command: ${err.message}`, err);
         reject(new Error(`Failed to execute git command: ${err.message}`));
       });
     });
@@ -536,27 +571,25 @@ class JavaDocumentationMCPServer {
   }
 
   private async generateReleaseNotes(args: any): Promise<CallToolResult> {
-    const projectPath = args?.projectPath || this.config.microservicePath;
-    const outputDir = args?.outputDir || path.join(this.config.outputPath, 'release-notes');
-    const branch = args?.branch;
-
-    if (!projectPath) {
-      throw new Error('projectPath is required (either as parameter or MICROSERVICE_PATH env var)');
-    }
-
-    this.logInfo(`🏷️  Generating release notes for project: ${projectPath}`);
+    // Use the root directory (proto-calls-autodoc) for Git operations and release notes
+    const gitRepoPath = path.join(process.cwd(), '..');
+    const outputDir = args?.outputDir || path.join(gitRepoPath, 'release-notes');
+    const branch = args?.branch || 'testJiraIntegration';
 
     try {
-      // Check if project path exists and is a git repository
-      await fs.access(projectPath);
-      await fs.access(path.join(projectPath, '.git'));
-    } catch (error) {
-      throw new Error(`Project path does not exist or is not a git repository: ${projectPath}`);
-    }
+      // Check if .git directory exists in the root repository
+      try {
+        await fs.access(path.join(gitRepoPath, '.git'));
+        this.logDebug('Git repository detected');
+      } catch (error) {
+        throw new Error(`Root directory is not a git repository: ${gitRepoPath}`);
+      }
 
-    try {
-      // Get the last commit information
-      const commitInfo = await this.getLastCommitFromBranch(projectPath, branch);
+      this.logInfo(`🏷️  Generating release notes in root directory: ${gitRepoPath}`);
+
+      // Get the last commit information from the root repository
+      this.logDebug('Fetching last commit information...');
+      const commitInfo = await this.getLastCommitFromBranch(gitRepoPath, branch);
       this.logInfo(`📝 Last commit: ${commitInfo.hash.substring(0, 8)} - ${commitInfo.message}`);
 
       if (!commitInfo.ticketNumber) {
@@ -573,44 +606,89 @@ class JavaDocumentationMCPServer {
       this.logInfo(`🎫 Jira ticket found: ${commitInfo.ticketNumber}`);
 
       // Fetch Jira issue details
-      const jiraIssue = await this.fetchJiraIssue(commitInfo.ticketNumber);
-      this.logInfo(`📋 Fetched Jira issue: ${jiraIssue.key} - ${jiraIssue.fields.summary}`);
+      try {
+        const jiraIssue = await this.fetchJiraIssue(commitInfo.ticketNumber);
+        this.logInfo(`📋 Fetched Jira issue: ${jiraIssue.key} - ${jiraIssue.fields.summary}`);
 
-      // Create release-notes directory
-      await fs.mkdir(outputDir, { recursive: true });
+        // Create release-notes directory
+        await fs.mkdir(outputDir, { recursive: true });
 
-      // Generate release note content
-      const quarter = this.getCurrentQuarter();
-      const releaseNoteContent = `${jiraIssue.key} & ${jiraIssue.fields.summary} & ${quarter}`;
+        // Generate release note content
+        const release = this.getCurrentQuarter();
+        const releaseNoteContent = `${jiraIssue.key} & ${jiraIssue.fields.summary} & ${release}`;
 
-      // Save release note file
-      const fileName = `${jiraIssue.key}.txt`;
-      const filePath = path.join(outputDir, fileName);
-      await fs.writeFile(filePath, releaseNoteContent);
+        // Save release note file
+        const fileName = `${jiraIssue.key}.txt`;
+        const filePath = path.join(outputDir, fileName);
+        await fs.writeFile(filePath, releaseNoteContent);
 
-      this.logInfo(`📄 Release note generated: ${filePath}`);
+        this.logInfo(`📄 Release note generated: ${filePath}`);
 
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `✅ Release note generated successfully!\n\n` +
-                  `🎫 Jira Ticket: ${jiraIssue.key}\n` +
-                  `📋 Title: ${jiraIssue.fields.summary}\n` +
-                  `📅 Quarter: ${quarter}\n` +
-                  `📁 File: ${fileName}\n` +
-                  `📂 Location: ${filePath}\n\n` +
-                  `📝 Content: ${releaseNoteContent}`,
-          },
-        ],
-      };
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `✅ Release note generated successfully!\n\n` +
+                    `🎫 Jira Ticket: ${jiraIssue.key}\n` +
+                    `📋 Title: ${jiraIssue.fields.summary}\n` +
+                    `📅 Release: ${release}\n` +
+                    `📁 File: ${fileName}\n` +
+                    `📂 Location: ${filePath}\n\n` +
+                    `📝 Content: ${releaseNoteContent}`,
+            },
+          ],
+        };
+      } catch (jiraError) {
+        this.logError('Jira API call failed', jiraError);
+        
+        // Still generate a release note with commit info only
+        const release = this.getCurrentQuarter();
+        const releaseNoteContent = `${commitInfo.ticketNumber} & ${commitInfo.message} & ${release}`;
+        
+        await fs.mkdir(outputDir, { recursive: true });
+        const fileName = `${commitInfo.ticketNumber}.txt`;
+        const filePath = path.join(outputDir, fileName);
+        await fs.writeFile(filePath, releaseNoteContent);
+
+        return {
+          content: [
+            {
+              type: 'text',
+              text: `⚠️  Release note generated with limited info (Jira fetch failed)\n\n` +
+                    `🎫 Ticket: ${commitInfo.ticketNumber}\n` +
+                    `📝 Commit: ${commitInfo.message}\n` +
+                    `📅 Release: ${release}\n` +
+                    `📁 File: ${fileName}\n` +
+                    `📂 Location: ${filePath}\n\n` +
+                    `❌ Jira Error: ${jiraError instanceof Error ? jiraError.message : String(jiraError)}\n` +
+                    `📝 Content: ${releaseNoteContent}`,
+            },
+          ],
+        };
+      }
 
     } catch (error) {
       this.logError('Release notes generation failed', error);
-      throw new Error(`Failed to generate release notes: ${error instanceof Error ? error.message : String(error)}`);
+      
+      // Provide more specific error messages based on the type of error
+      let errorMessage = '';
+      if (error instanceof Error) {
+        if (error.message.includes('not a git repository')) {
+          errorMessage = `Directory is not a git repository: ${gitRepoPath}`;
+        } else if (error.message.includes('No commits found')) {
+          errorMessage = 'No commits found in the repository';
+        } else if (error.message.includes('Git command failed')) {
+          errorMessage = `Git error: ${error.message}`;
+        } else {
+          errorMessage = error.message;
+        }
+      } else {
+        errorMessage = String(error);
+      }
+      
+      throw new Error(`Failed to generate release notes: ${errorMessage}`);
     }
   }
-
   // Existing methods (calculateSourceHash, shouldRegenerateClassesSummary, etc.) remain the same...
   
   private async calculateSourceHash(projectPath: string): Promise<string> {
@@ -997,12 +1075,13 @@ class JavaDocumentationMCPServer {
     }
 
     // Step 3: Generate release notes if requested and Jira is configured
+    // Step 3: Generate release notes if requested and Jira is configured
     if (generateReleaseNotes) {
       this.logInfo('🏷️  Step 3: Generating release notes...');
       try {
         const releaseNotesResult = await this.generateReleaseNotes({
           projectPath,
-          outputDir: path.join(outputDir, 'release-notes')
+          outputDir: args?.releaseNotesPath || path.join(outputDir, 'release-notes')
         });
         
         // Extract success message from release notes result
@@ -1016,16 +1095,27 @@ class JavaDocumentationMCPServer {
           if (ticketMatch) {
             pipelineResults.push(`📋 Ticket: ${ticketMatch[1]}`);
           }
+        } else if (releaseNotesText.startsWith('⚠️')) {
+          pipelineResults.push('⚠️  ' + releaseNotesText.split('\n')[0].replace('⚠️  ', ''));
         } else {
           pipelineResults.push('⚠️  Release notes: ' + releaseNotesText.split('\n')[0]);
         }
       } catch (error) {
         this.logError('Release notes generation failed', error);
         const errorMsg = error instanceof Error ? error.message : String(error);
-        if (errorMsg.includes('Jira configuration missing')) {
+        
+        // Categorize the error for better user feedback
+        if (errorMsg.includes('not a git repository')) {
+          pipelineResults.push('❌ Release notes failed: Not a git repository');
+        } else if (errorMsg.includes('No commits found')) {
+          pipelineResults.push('❌ Release notes failed: No commits found');
+        } else if (errorMsg.includes('Jira configuration missing')) {
           pipelineResults.push('⚠️  Release notes skipped (Jira not configured)');
+        } else if (errorMsg.includes('Git command failed')) {
+          pipelineResults.push('❌ Release notes failed: Git error');
+          this.logDebug(`Git error details: ${errorMsg}`);
         } else {
-          pipelineResults.push(`❌ Release notes failed: ${errorMsg}`);
+          pipelineResults.push(`❌ Release notes failed: ${errorMsg.split('\n')[0]}`);
         }
       }
     } else {
