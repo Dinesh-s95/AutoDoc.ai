@@ -151,6 +151,75 @@ class ConfluenceUploader:
         
         return text
 
+    def is_openapi_content(self, content):
+        """Check if content appears to be OpenAPI specification"""
+        content_lower = content.lower().strip()
+        # Check for common OpenAPI indicators
+        openapi_indicators = [
+            'openapi:', 
+            'swagger:', 
+            'info:', 
+            'paths:', 
+            'components:',
+            '"openapi":', 
+            '"swagger":', 
+            '"info":', 
+            '"paths":', 
+            '"components":'
+        ]
+        return any(indicator in content_lower for indicator in openapi_indicators)
+
+    def process_plantuml_block(self, uml_content):
+        """Process PlantUML content and return appropriate Confluence macro"""
+        try:
+            # Clean up the PlantUML content
+            uml_content = uml_content.strip()
+            
+            # Ensure it has proper start/end tags
+            if '@startuml' not in uml_content:
+                uml_content = '@startuml\n' + uml_content
+            if '@enduml' not in uml_content:
+                uml_content = uml_content + '\n@enduml'
+            
+            print(f"Processing PlantUML block: {len(uml_content)} characters")
+            
+            # Use Confluence's built-in PlantUML macro
+            return f'''<ac:structured-macro ac:name="plantuml" ac:schema-version="1">
+<ac:plain-text-body><![CDATA[{uml_content}]]></ac:plain-text-body>
+</ac:structured-macro>'''
+        except Exception as e:
+            print(f"Error processing PlantUML: {e}")
+            # Fallback to code block
+            return f'''<ac:structured-macro ac:name="code" ac:schema-version="1">
+<ac:parameter ac:name="language">plantuml</ac:parameter>
+<ac:plain-text-body><![CDATA[{uml_content}]]></ac:plain-text-body>
+</ac:structured-macro>'''
+
+    def process_openapi_block(self, content, language):
+        """Process OpenAPI content and return appropriate Confluence macro"""
+        try:
+            # Check if we have the OpenAPI addon available
+            print(f"Processing OpenAPI block: {len(content)} characters, language: {language}")
+            
+            # Try to use Swagger macro first (more commonly available)
+            if language.lower() in ['openapi', 'yaml', 'yml', 'json']:
+                return f'''<ac:structured-macro ac:name="swagger-ui" ac:schema-version="1">
+<ac:parameter ac:name="url">data:application/{language.lower()};base64,{base64.b64encode(content.encode('utf-8')).decode('utf-8')}</ac:parameter>
+</ac:structured-macro>'''
+            else:
+                # Fallback to code block with syntax highlighting
+                return f'''<ac:structured-macro ac:name="code" ac:schema-version="1">
+<ac:parameter ac:name="language">{language}</ac:parameter>
+<ac:parameter ac:name="title">OpenAPI Specification</ac:parameter>
+<ac:plain-text-body><![CDATA[{content}]]></ac:plain-text-body>
+</ac:structured-macro>'''
+        except Exception as e:
+            print(f"Error processing OpenAPI: {e}")
+            return f'''<ac:structured-macro ac:name="code" ac:schema-version="1">
+<ac:parameter ac:name="language">{language}</ac:parameter>
+<ac:plain-text-body><![CDATA[{content}]]></ac:plain-text-body>
+</ac:structured-macro>'''
+
     def convert_adoc_to_html(self, content):
         """Improved AsciiDoc to HTML conversion"""
         lines = content.splitlines()
@@ -181,18 +250,19 @@ class ConfluenceUploader:
                     # End of code block
                     if code_block_content:
                         content_str = '\n'.join(code_block_content)
+                        
+                        # Check if it's PlantUML content
+                        if '@startuml' in content_str or '@enduml' in content_str:
+                            html.append(self.process_plantuml_block(content_str))
                         # Check if it's OpenAPI content
-                        if code_language.lower() in ['openapi', 'yaml', 'yml'] and self.is_openapi_content(content_str):
-                            html.append('<ac:structured-macro ac:name="open-api">')
-                            html.append('<ac:parameter ac:name="src">data:application/yaml;base64,' + base64.b64encode(content_str.encode('utf-8')).decode('utf-8') + '</ac:parameter>')
-                            html.append('</ac:structured-macro>')
+                        elif self.is_openapi_content(content_str):
+                            html.append(self.process_openapi_block(content_str, code_language))
                         else:
-                            html.append('<ac:structured-macro ac:name="code">')
-                            html.append(f'<ac:parameter ac:name="language">{code_language}</ac:parameter>')
-                            html.append('<ac:plain-text-body><![CDATA[')
-                            html.append(content_str)
-                            html.append(']]></ac:plain-text-body>')
-                            html.append('</ac:structured-macro>')
+                            # Regular code block
+                            html.append(f'''<ac:structured-macro ac:name="code" ac:schema-version="1">
+<ac:parameter ac:name="language">{code_language}</ac:parameter>
+<ac:plain-text-body><![CDATA[{content_str}]]></ac:plain-text-body>
+</ac:structured-macro>''')
                     in_code_block = False
                     code_block_content = []
                     code_language = 'text'
@@ -274,12 +344,36 @@ class ConfluenceUploader:
                 html.append('<br/>')
                 
             elif line.strip():
-                # Regular paragraph
-                if in_list:
-                    html.append('</ul>')
-                    in_list = False
-                formatted_line = self.format_text(line.strip())
-                html.append(f'<p>{formatted_line}</p>')
+                # Check for standalone PlantUML content
+                if '@startuml' in line or line.strip().startswith(('actor ', 'participant ', 'User ->', 'Controller ->')):
+                    # This looks like PlantUML content that wasn't in a proper block
+                    if in_list:
+                        html.append('</ul>')
+                        in_list = False
+                    
+                    # Collect PlantUML content until we find an end or next section
+                    plantuml_lines = [line]
+                    j = i + 1
+                    while j < len(lines):
+                        next_line = lines[j].strip()
+                        if next_line.startswith(('=', '#')) or next_line == '':
+                            break
+                        plantuml_lines.append(lines[j])
+                        if '@enduml' in next_line:
+                            j += 1
+                            break
+                        j += 1
+                    
+                    plantuml_content = '\n'.join(plantuml_lines)
+                    html.append(self.process_plantuml_block(plantuml_content))
+                    i = j - 1
+                else:
+                    # Regular paragraph
+                    if in_list:
+                        html.append('</ul>')
+                        in_list = False
+                    formatted_line = self.format_text(line.strip())
+                    html.append(f'<p>{formatted_line}</p>')
             
             i += 1
         
@@ -288,23 +382,22 @@ class ConfluenceUploader:
             html.append('</ul>')
         if in_code_block and code_block_content:
             content_str = '\n'.join(code_block_content)
+            # Check if it's PlantUML content
+            if '@startuml' in content_str or '@enduml' in content_str:
+                html.append(self.process_plantuml_block(content_str))
             # Check if it's OpenAPI content
-            if code_language.lower() in ['openapi', 'yaml', 'yml'] and self.is_openapi_content(content_str):
-                html.append('<ac:structured-macro ac:name="open-api">')
-                html.append('<ac:parameter ac:name="src">data:application/yaml;base64,' + base64.b64encode(content_str.encode('utf-8')).decode('utf-8') + '</ac:parameter>')
-                html.append('</ac:structured-macro>')
+            elif self.is_openapi_content(content_str):
+                html.append(self.process_openapi_block(content_str, code_language))
             else:
-                html.append('<ac:structured-macro ac:name="code">')
-                html.append(f'<ac:parameter ac:name="language">{code_language}</ac:parameter>')
-                html.append('<ac:plain-text-body><![CDATA[')
-                html.append(content_str)
-                html.append(']]></ac:plain-text-body>')
-                html.append('</ac:structured-macro>')
+                html.append(f'''<ac:structured-macro ac:name="code" ac:schema-version="1">
+<ac:parameter ac:name="language">{code_language}</ac:parameter>
+<ac:plain-text-body><![CDATA[{content_str}]]></ac:plain-text-body>
+</ac:structured-macro>''')
         
         return '\n'.join(html)
 
     def convert_markdown_to_html(self, content):
-        """Basic markdown to HTML conversion"""
+        """Basic markdown to HTML conversion with PlantUML and OpenAPI support"""
         lines = content.splitlines()
         html = []
         in_code_block = False
@@ -316,12 +409,19 @@ class ConfluenceUploader:
             if line.startswith('```'):
                 if in_code_block:
                     # End code block
-                    html.append('<ac:structured-macro ac:name="code">')
-                    html.append(f'<ac:parameter ac:name="language">{code_language}</ac:parameter>')
-                    html.append('<ac:plain-text-body><![CDATA[')
-                    html.append('\n'.join(code_content))
-                    html.append(']]></ac:plain-text-body>')
-                    html.append('</ac:structured-macro>')
+                    content_str = '\n'.join(code_content)
+                    
+                    # Check if it's PlantUML content
+                    if code_language.lower() == 'plantuml' or '@startuml' in content_str:
+                        html.append(self.process_plantuml_block(content_str))
+                    # Check if it's OpenAPI content
+                    elif self.is_openapi_content(content_str):
+                        html.append(self.process_openapi_block(content_str, code_language))
+                    else:
+                        html.append(f'''<ac:structured-macro ac:name="code" ac:schema-version="1">
+<ac:parameter ac:name="language">{code_language}</ac:parameter>
+<ac:plain-text-body><![CDATA[{content_str}]]></ac:plain-text-body>
+</ac:structured-macro>''')
                     code_content = []
                     in_code_block = False
                     code_language = 'text'
@@ -382,74 +482,24 @@ class ConfluenceUploader:
             html.append('</ul>')
         if in_code_block and code_content:
             content_str = '\n'.join(code_content)
+            # Check if it's PlantUML content
+            if code_language.lower() == 'plantuml' or '@startuml' in content_str:
+                html.append(self.process_plantuml_block(content_str))
             # Check if it's OpenAPI content
-            if code_language.lower() in ['openapi', 'yaml', 'yml'] and self.is_openapi_content(content_str):
-                html.append('<ac:structured-macro ac:name="open-api">')
-                html.append('<ac:parameter ac:name="src">data:application/yaml;base64,' + base64.b64encode(content_str.encode('utf-8')).decode('utf-8') + '</ac:parameter>')
-                html.append('</ac:structured-macro>')
+            elif self.is_openapi_content(content_str):
+                html.append(self.process_openapi_block(content_str, code_language))
             else:
-                html.append('<ac:structured-macro ac:name="code">')
-                html.append(f'<ac:parameter ac:name="language">{code_language}</ac:parameter>')
-                html.append('<ac:plain-text-body><![CDATA[')
-                html.append(content_str)
-                html.append(']]></ac:plain-text-body>')
-                html.append('</ac:structured-macro>')
+                html.append(f'''<ac:structured-macro ac:name="code" ac:schema-version="1">
+<ac:parameter ac:name="language">{code_language}</ac:parameter>
+<ac:plain-text-body><![CDATA[{content_str}]]></ac:plain-text-body>
+</ac:structured-macro>''')
         
         return '\n'.join(html)
 
-    def is_openapi_content(self, content):
-        """Check if content appears to be OpenAPI specification"""
-        content_lower = content.lower().strip()
-        # Check for common OpenAPI indicators
-        openapi_indicators = [
-            'openapi:', 
-            'swagger:', 
-            'info:', 
-            'paths:', 
-            'components:',
-            '"openapi":', 
-            '"swagger":', 
-            '"info":', 
-            '"paths":', 
-            '"components":'
-        ]
-        return any(indicator in content_lower for indicator in openapi_indicators)
-
     def render_plantuml_blocks(self, content, doc_dir):
-        """Enhanced PlantUML and source block detection with better encoding"""
-        def replace_block(match):
-            # Get the captured groups
-            plantuml_block = match.group(1) if len(match.groups()) > 0 and match.group(1) else None
-            markdown_block = match.group(2) if len(match.groups()) > 1 and match.group(2) else None  
-            raw_block = match.group(3) if len(match.groups()) > 2 and match.group(3) else None
-            
-            uml_code = plantuml_block or markdown_block or raw_block
-            
-            if uml_code:
-                uml_code = uml_code.strip()
-                if '@startuml' in uml_code and '@enduml' in uml_code:
-                    try:
-                        # Try to generate PlantUML URL
-                        url = plantuml_url(uml_code)
-                        # Use Confluence's built-in PlantUML macro instead of external URL
-                        return f'''<ac:structured-macro ac:name="plantuml">
-<ac:plain-text-body><![CDATA[{uml_code}]]></ac:plain-text-body>
-</ac:structured-macro>'''
-                    except Exception as e:
-                        print(f"Error generating PlantUML: {e}")
-                        return f'<ac:structured-macro ac:name="code"><ac:parameter ac:name="language">plantuml</ac:parameter><ac:plain-text-body><![CDATA[{uml_code}]]></ac:plain-text-body></ac:structured-macro>'
-            
-            return match.group(0)  # Return original if no match
-
-        # Enhanced pattern to catch PlantUML blocks
-        pattern = re.compile(
-            r'(?:\[plantuml.*?\]\s*[-.]{4,}\s*(@startuml.*?@enduml)\s*[-.]{4,})|' +  # [plantuml] blocks
-            r'(?:```plantuml\s*(@startuml.*?@enduml)\s*```)|' +                      # markdown plantuml
-            r'(?:^(@startuml.*?@enduml)$)',                                          # raw plantuml
-            re.DOTALL | re.IGNORECASE | re.MULTILINE
-        )
-
-        return pattern.sub(replace_block, content)
+        """Enhanced PlantUML and source block detection with better encoding - now integrated into main conversion"""
+        # This method is now integrated into the main conversion methods
+        return content
  
     def find_existing_page(self, title):
         url = f"{self.base_url}/content"
@@ -489,16 +539,15 @@ class ConfluenceUploader:
         return response.json().get('id') if response else None
 
     def convert_to_html(self, content, ext):
-        """Updated conversion method with PlantUML processing"""
-        # First process PlantUML blocks
-        content = self.render_plantuml_blocks(content, Path('.'))
-        
+        """Updated conversion method with integrated PlantUML and OpenAPI processing"""
         if ext == '.adoc':
             return self.convert_adoc_to_html(content)
         elif ext == '.md':
             return self.convert_markdown_to_html(content)
         else:
-            return f'<ac:structured-macro ac:name="code"><ac:plain-text-body><![CDATA[{content}]]></ac:plain-text-body></ac:structured-macro>'
+            return f'''<ac:structured-macro ac:name="code" ac:schema-version="1">
+<ac:plain-text-body><![CDATA[{content}]]></ac:plain-text-body>
+</ac:structured-macro>'''
  
     def read_file(self, path):
         try:
@@ -575,8 +624,8 @@ class ConfluenceUploader:
                     continue
  
                 html = self.convert_to_html(content, Path(f).suffix)
-                page = self.find_existing_page(title)
                 page_content = f"<h3>{title}</h3><p>File: {fname}</p><hr/>{html}"
+                page = self.find_existing_page(title)
                 if page:
                     print(f"  Updating existing page: {title}")
                     result = self.update_page(page['id'], title, page_content, page['version']['number'], svc_id)
