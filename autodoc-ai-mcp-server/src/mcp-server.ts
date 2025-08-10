@@ -570,11 +570,76 @@ class JavaDocumentationMCPServer {
     return `${year}.${quarter}`;
   }
 
+
+  private async getCurrentGitBranch(projectPath: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const git = spawn('git', ['branch', '--show-current'], { 
+        cwd: projectPath,
+        stdio: 'pipe'
+      });
+
+      let output = '';
+      let error = '';
+
+      git.stdout.on('data', (data) => {
+        output += data.toString();
+      });
+
+      git.stderr.on('data', (data) => {
+        error += data.toString();
+      });
+
+      git.on('close', (code) => {
+        this.logDebug(`Git branch command finished with code ${code}, output: "${output.trim()}", error: "${error.trim()}"`);
+        
+        if (code !== 0) {
+          const errorMessage = error.trim() || `Git branch command failed with exit code ${code}`;
+          this.logError(`Git branch command failed with code ${code}: ${errorMessage}`);
+          reject(new Error(`Git branch command failed with code ${code}: ${errorMessage}`));
+          return;
+        }
+
+        const currentBranch = output.trim();
+        if (!currentBranch) {
+          this.logError('Git branch command returned empty output - could not determine current branch');
+          reject(new Error('Could not determine current Git branch'));
+          return;
+        }
+
+        this.logDebug(`Current Git branch: ${currentBranch}`);
+        resolve(currentBranch);
+      });
+
+      git.on('error', (err) => {
+        this.logError(`Failed to execute git branch command: ${err.message}`, err);
+        reject(new Error(`Failed to execute git branch command: ${err.message}`));
+      });
+    });
+  }
+
   private async generateReleaseNotes(args: any): Promise<CallToolResult> {
     // Use the root directory (proto-calls-autodoc) for Git operations and release notes
     const gitRepoPath = path.join(process.cwd(), '..');
     const outputDir = args?.outputDir || path.join(gitRepoPath, 'release-notes');
-    const branch = args?.branch || 'testJiraIntegration';
+    
+    let branch: string;
+    
+    // Determine which branch to use
+    if (args?.branch) {
+      // Use explicitly provided branch
+      branch = args.branch;
+      this.logInfo(`🌿 Using explicitly provided branch: ${branch}`);
+    } else {
+      // Auto-detect current branch
+      try {
+        branch = await this.getCurrentGitBranch(gitRepoPath);
+        this.logInfo(`🌿 Auto-detected current branch: ${branch}`);
+      } catch (error) {
+        this.logError('Failed to detect current branch, falling back to default', error);
+        branch = 'main'; // Fallback to main instead of testJiraIntegration
+        this.logInfo(`🌿 Using fallback branch: ${branch}`);
+      }
+    }
 
     try {
       // Check if .git directory exists in the root repository
@@ -586,6 +651,7 @@ class JavaDocumentationMCPServer {
       }
 
       this.logInfo(`🏷️  Generating release notes in root directory: ${gitRepoPath}`);
+      this.logInfo(`🌿 Using branch: ${branch}`);
 
       // Get the last commit information from the root repository
       this.logDebug('Fetching last commit information...');
@@ -597,7 +663,7 @@ class JavaDocumentationMCPServer {
           content: [
             {
               type: 'text',
-              text: `⚠️  No Jira ticket number found in the last commit message.\n\nCommit: ${commitInfo.hash.substring(0, 8)} - "${commitInfo.message}"\n\n💡 Expected format: "TICKET-123 your commit message" where TICKET-123 is your Jira ticket number.`,
+              text: `⚠️  No Jira ticket number found in the last commit message on branch '${branch}'.\n\nCommit: ${commitInfo.hash.substring(0, 8)} - "${commitInfo.message}"\n\n💡 Expected format: "TICKET-123 your commit message" where TICKET-123 is your Jira ticket number.`,
             },
           ],
         };
@@ -612,12 +678,13 @@ class JavaDocumentationMCPServer {
       try {
         await fs.access(filePath);
         // File exists, skip generation
-        this.logInfo(`📝 Skipping release note generation since its already exists for ticket ${commitInfo.ticketNumber}`);
+        this.logInfo(`📝 Skipping release note generation since it already exists for ticket ${commitInfo.ticketNumber}`);
         return {
           content: [
             {
               type: 'text',
               text: `ℹ️ Release note already exists for ${commitInfo.ticketNumber}\n\n` +
+                    `🌿 Branch: ${branch}\n` +
                     `📁 File: ${fileName}\n` +
                     `📂 Location: ${filePath}\n\n` +
                     `💡 Skipping generation to avoid duplicate entries.`,
@@ -650,6 +717,7 @@ class JavaDocumentationMCPServer {
             {
               type: 'text',
               text: `✅ Release note generated successfully!\n\n` +
+                    `🌿 Branch: ${branch}\n` +
                     `🎫 Jira Ticket: ${jiraIssue.key}\n` +
                     `📋 Title: ${jiraIssue.fields.summary}\n` +
                     `📅 Release: ${release}\n` +
@@ -673,6 +741,7 @@ class JavaDocumentationMCPServer {
             {
               type: 'text',
               text: `⚠️  Release note generated with limited info (Jira fetch failed)\n\n` +
+                    `🌿 Branch: ${branch}\n` +
                     `🎫 Ticket: ${commitInfo.ticketNumber}\n` +
                     `📝 Commit: ${commitInfo.message}\n` +
                     `📅 Release: ${release}\n` +
