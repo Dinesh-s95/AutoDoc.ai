@@ -1532,7 +1532,7 @@ Make it suitable for developers to understand the detailed implementation design
     }
   }
 
-  private async generateOpenApiSpecification(
+private async generateOpenApiSpecification(
   classesSummary: ClassSummary[],
   outputFormat: string
 ): Promise<string> {
@@ -1598,10 +1598,16 @@ Output ONLY the OpenAPI YAML, no extra commentary.
       temperature: 0.3,
     });
 
-    const yamlContent = response.choices[0]?.message?.content?.trim();
+    let yamlContent = response.choices[0]?.message?.content?.trim();
     if (!yamlContent) {
       throw new Error('OpenAI returned empty response');
     }
+
+    // Remove any accidental markdown fences
+    yamlContent = yamlContent
+      .replace(/```[a-zA-Z]*\n?/g, "")
+      .replace(/```/g, "")
+      .trim();
 
     // 5. Wrap in AsciiDoc for Confluence rendering
     const adocContent = `== Interface Concept
@@ -1626,6 +1632,8 @@ ${yamlContent}
     throw new Error(`Failed to generate OpenAPI specification: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
+
+
 
 
   async run() {
