@@ -36,27 +36,13 @@
       "RestController"
     ],
     "methods": [
-      "@PostMapping(\"/nominate-primary\") public String nominatePrimary(@RequestParam String username)",
-      "@PostMapping(\"/nominate-secondary\") public String nominateSecondary(@RequestParam String username)"
+      "@PostMapping(\"/nominate-primary\") public String nominatePrimary(@RequestParam String username)"
     ],
     "endpoints": [
       {
         "annotation": "PostMapping",
         "method": "@PostMapping(\"/nominate-primary\") public String nominatePrimary(@RequestParam String username)",
         "url": "/enrollment/nominate-primary",
-        "inputs": [
-          {
-            "annotation": "RequestParam",
-            "type": "String",
-            "name": "username"
-          }
-        ],
-        "output": "String"
-      },
-      {
-        "annotation": "PostMapping",
-        "method": "@PostMapping(\"/nominate-secondary\") public String nominateSecondary(@RequestParam String username)",
-        "url": "/enrollment/nominate-secondary",
         "inputs": [
           {
             "annotation": "RequestParam",
