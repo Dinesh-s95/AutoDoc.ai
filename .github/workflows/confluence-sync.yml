@@ -14,54 +14,121 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+      issues: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Setup Python
         uses: actions/setup-python@v4
         with:
           python-version: "3.11"
 
-      - name: Install dependencies
+      - name: Install Python dependencies
         run: |
           python -m pip install --upgrade pip
           pip install requests
 
+      - name: Check for documentation changes
+        id: check-docs
+        run: |
+          # Check if documentation files were changed in this PR
+          CHANGED_DOCS=$(git diff --name-only HEAD^ HEAD | grep -E '\.(md|adoc)$' | head -10 || true)
+          DOC_FOLDERS="identityprovider/documentation"
+
+          echo "Changed documentation files:"
+          echo "$CHANGED_DOCS"
+
+          # Check if any documentation folder exists
+          HAS_DOCS=false
+          for folder in $DOC_FOLDERS; do
+            if [ -d "$folder" ]; then
+              HAS_DOCS=true
+              echo "Found documentation folder: $folder"
+              break
+            fi
+          done
+
+          echo "has_docs=$HAS_DOCS" >> $GITHUB_OUTPUT
+          echo "changed_docs<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGED_DOCS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          echo "found_services=$FOUND_SERVICES" >> $GITHUB_OUTPUT
+
+      - name: Install PlantUML dependencies
+        if: steps.check-docs.outputs.has_docs == 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y graphviz
+          pip install plantuml
+
       - name: Upload documentation to Confluence
+        if: steps.check-docs.outputs.has_docs == 'true'
         env:
           CONFLUENCE_URL: "https://sharan99r.atlassian.net"
           CONFLUENCE_USER: ${{ secrets.CONFLUENCE_USER }}
           CONFLUENCE_API_TOKEN: ${{ secrets.CONFLUENCE_API_TOKEN }}
           SPACE_KEY: ${{ secrets.SPACE_KEY }}
+          DOCS_FOLDER: "./identityprovider/documentation"
         run: |
-          python confluence_uploader_hierarchical.py
+          echo "Running Confluence documentation uploader..."
+          echo "PR: #${{ github.event.pull_request.number }} - ${{ github.event.pull_request.title }}"
+          echo "Author: ${{ github.event.pull_request.user.login }}"
+          echo "Merged at: $(date '+%B %d, %Y at %H:%M UTC')"
+          echo ""
 
-      - name: Post result comment
-        if: always()
+          # Debug information
+          echo "=== Debug Information ==="
+          echo "Current directory: $(pwd)"
+          echo "Available files:"
+          ls -la
+          echo ""
+          echo "Looking for documentation folder: $DOCS_FOLDER"
+          if [ -d "$DOCS_FOLDER" ]; then
+            echo "Found documentation folder. Contents:"
+            ls -la "$DOCS_FOLDER"
+          else
+            echo "Documentation folder not found!"
+            echo "Available directories:"
+            find . -type d -name "*documentation*" || true
+            find . -type d -name "*identityprovider*" || true
+          fi
+          echo "========================"
+          echo ""
+
+          # Run the hierarchical uploader
+          python confluence_uploader_hierarchical.py
+      - name: Post success comment
+        if: success()
         uses: actions/github-script@v7
         with:
           script: |
-            const success = '${{ job.status }}' === 'success';
-            const icon = success ? '✅' : '❌';
-            const status = success ? 'Successfully Updated' : 'Failed to Update';
-            const body = success ? 
-              `${icon} **Documentation ${status} in Confluence!**
-              
-              🔗 [View Documentation](https://sharan99r.atlassian.net/wiki/spaces/~712020a1106f7965b7429fa169a05d4788f4d5)
-              
-              **PR #${{ github.event.pull_request.number }}**: ${{ github.event.pull_request.title }}
-              **Author**: @${{ github.event.pull_request.user.login }}` :
-              `${icon} **Documentation ${status}**
-              
-              [Check workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.
-              
-              **PR #${{ github.event.pull_request.number }}**: ${{ github.event.pull_request.title }}`;
-
             github.rest.issues.createComment({
               issue_number: ${{ github.event.pull_request.number }},
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: body
+              body: '✅ Documentation has been successfully updated in Confluence using hierarchical structure!\n\n📚 **Updated Documentation:**\n- Parent Page: Identity Provider Documentation\n- Child Pages: Architecture Design, Detailed Design, OpenAPI Specification\n\n🔗 [View in Confluence](https://sharan99r.atlassian.net/wiki/spaces/~712020a1106f7965b7429fa169a05d4788f4d5)\n\n**PR Details:**\n- PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}\n- Author: ${{ github.event.pull_request.user.login }}\n- Merged: ' + new Date().toLocaleString()
             })
+
+      - name: Post failure comment
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: ${{ github.event.pull_request.number }},
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '❌ Failed to update documentation in Confluence.\n\n**Error Details:**\nThe hierarchical documentation uploader encountered an issue. Please check the [workflow logs](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) for details.\n\n**Next Steps:**\n1. Check the workflow logs for specific error messages\n2. Verify Confluence API credentials and permissions\n3. Ensure documentation files are properly formatted\n4. Re-run the workflow if needed'
+            })
+
+      - name: Log workflow completion
+        if: always()
+        run: |
+          echo "Confluence sync workflow completed"
+          echo "Status: ${{ job.status }}"
+          echo "PR: #${{ github.event.pull_request.number }}"
+          echo "Time: $(date '+%Y-%m-%d %H:%M:%S UTC')"
