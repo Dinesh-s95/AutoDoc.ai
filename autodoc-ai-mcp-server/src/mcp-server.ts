@@ -392,8 +392,8 @@ class JavaDocumentationMCPServer {
       throw new Error('projectPath is required (either as parameter or MICROSERVICE_PATH env var)');
     }
 
-    const classesSummaryPath = path.join(this.config.outputPath, 'classes-summary.json');
-    const cacheMetadataPath = path.join(this.config.outputPath, '.cache-metadata.json');
+    const classesSummaryPath = path.join(this.config.outputPath, 'cache', 'classes-summary.json');
+    const cacheMetadataPath = path.join(this.config.outputPath, 'cache', '.cache-metadata.json');
     
     try {
       const currentSourceHash = await this.calculateSourceHash(projectPath);
@@ -746,52 +746,38 @@ class JavaDocumentationMCPServer {
       return true;
     }
 
-    const classesSummaryPath = path.join(this.config.outputPath, 'classes-summary.json');
-    const cacheMetadataPath = path.join(this.config.outputPath, '.cache-metadata.json');
+    const cacheDir = path.join(this.config.outputPath, 'cache');
+    const classesSummaryPath = path.join(cacheDir, 'classes-summary.json');
+    const cacheMetadataPath = path.join(cacheDir, '.cache-metadata.json');
 
     try {
       // Check if classes summary exists
       await fs.access(classesSummaryPath);
-      
+
       // Check if cache metadata exists
       await fs.access(cacheMetadataPath);
-      
+
       // Read cache metadata
       const metadataContent = await fs.readFile(cacheMetadataPath, 'utf-8');
       const metadata: CacheMetadata = JSON.parse(metadataContent);
-      
+
       // Calculate current source hash (only considers Java files)
       const currentSourceHash = await this.calculateSourceHash(projectPath);
-      
+
       // Get current Java files for comparison
       const currentJavaFiles = await this.findJavaFiles(projectPath);
       const currentRelativeFiles = currentJavaFiles.map(file => path.relative(projectPath, file)).sort();
-      
+
       // Check if Java files have changed
       const filesChanged = JSON.stringify(metadata.sourceFiles) !== JSON.stringify(currentRelativeFiles);
       const contentChanged = metadata.sourceHash !== currentSourceHash;
-      
+
       if (!filesChanged && !contentChanged) {
-        this.logInfo('✅ No Java file changes detected, using cached classes-summary.json');
+        this.logInfo('✅ No Code changes detected, using cached classes-summary.json');
         this.logDebug(`Java files: ${currentJavaFiles.length}, Hash: ${currentSourceHash}`);
         return false;
       } else {
-        if (filesChanged) {
-          this.logInfo('🔄 Java file structure changed, regeneration needed');
-          this.logDebug('File structure changes:', {
-            before: metadata.sourceFiles.length,
-            after: currentRelativeFiles.length,
-            added: currentRelativeFiles.filter(f => !metadata.sourceFiles.includes(f)),
-            removed: metadata.sourceFiles.filter(f => !currentRelativeFiles.includes(f))
-          });
-        }
-        if (contentChanged) {
-          this.logInfo('🔄 Java file content changed, regeneration needed');
-          this.logDebug('Hash comparison:', {
-            cached: metadata.sourceHash,
-            current: currentSourceHash
-          });
-        }
+        this.logInfo('📄 Code changes detected, regenerating classes-summary.json');
         return true;
       }
     } catch (error) {
@@ -803,7 +789,7 @@ class JavaDocumentationMCPServer {
   private async saveCacheMetadata(projectPath: string, classesSummary: ClassSummary[]): Promise<void> {
     const sourceHash = await this.calculateSourceHash(projectPath);
     const javaFiles = await this.findJavaFiles(projectPath);
-    
+
     const metadata: CacheMetadata = {
       sourceHash,
       lastUpdated: new Date().toISOString(),
@@ -811,55 +797,17 @@ class JavaDocumentationMCPServer {
       classCount: classesSummary.length,
     };
 
-    const cacheMetadataPath = path.join(this.config.outputPath, '.cache-metadata.json');
+    const cacheDir = path.join(this.config.outputPath, 'cache');
+    await fs.mkdir(cacheDir, { recursive: true });
+
+    const cacheMetadataPath = path.join(cacheDir, '.cache-metadata.json');
+    const classesSummaryPath = path.join(cacheDir, 'classes-summary.json');
+
     await fs.writeFile(cacheMetadataPath, JSON.stringify(metadata, null, 2));
-    
-    this.logInfo(`💾 Cache metadata saved: ${metadata.classCount} classes from ${metadata.sourceFiles.length} Java files`);
+    await fs.writeFile(classesSummaryPath, JSON.stringify(classesSummary, null, 2));
+
+    this.logInfo(`💾 Cache metadata and classes summary saved: ${metadata.classCount} classes from ${metadata.sourceFiles.length} Java files`);
     this.logDebug('💾 Cached Java files:', metadata.sourceFiles);
-  }
-
-  private async shouldRegenerateDocumentation(forceRegenerate: boolean = false, classesSummaryWasRegenerated: boolean = false): Promise<boolean> {
-    if (forceRegenerate) {
-      this.logInfo('🔄 Force documentation regeneration requested');
-      return true;
-    }
-
-    // If classes-summary.json was just regenerated due to code changes, regenerate docs
-    if (classesSummaryWasRegenerated) {
-      this.logInfo('🔄 Java code changed, documentation needs update');
-      return true;
-    }
-
-    // Check if documentation files exist
-    const docFiles = [
-      path.join(this.config.outputPath, `architecturedesign.${this.config.docFormat}`),
-      path.join(this.config.outputPath, `detaileddesign.${this.config.docFormat}`),
-      path.join(this.config.outputPath, `openApiSpecification.${this.config.docFormat}`),
-    ];
-
-    try {
-      // Check if all documentation files exist
-      const missingFiles: string[] = [];
-      for (const docFile of docFiles) {
-        try {
-          await fs.access(docFile);
-        } catch {
-          missingFiles.push(path.basename(docFile));
-        }
-      }
-
-      if (missingFiles.length > 0) {
-        this.logInfo(`📄 Missing documentation files: ${missingFiles.join(', ')}, will generate documentation`);
-        return true;
-      }
-
-      // If we reach here, all docs exist and classesSummaryWasRegenerated is false
-      this.logInfo('\n✅ Documentation is up-to-date (No Java code changes detected since last generation)');
-      return false;
-    } catch (error) {
-      this.logError('📄 Error checking documentation status, will generate documentation', error);
-      return true;
-    }
   }
 
   private async analyzeJavaProject(args: any): Promise<CallToolResult> {
@@ -886,7 +834,7 @@ class JavaDocumentationMCPServer {
     const shouldRegenerate = await this.shouldRegenerateClassesSummary(projectPath, forceRegenerate);
     
     if (!shouldRegenerate) {
-      const classesSummaryPath = path.join(this.config.outputPath, 'classes-summary.json');
+      const classesSummaryPath = path.join(this.config.outputPath, 'cache', 'classes-summary.json');
       const content = await fs.readFile(classesSummaryPath, 'utf-8');
       const classesSummary = JSON.parse(content);
       
@@ -894,7 +842,7 @@ class JavaDocumentationMCPServer {
         content: [
           {
             type: 'text',
-            text: `✅ Using cached classes-summary.json (no Java file changes detected)\n\n📊 Cached analysis contains ${classesSummary.length} classes:\n${classesSummary.map((c: ClassSummary) => `- ${c.className}`).join('\n')}\n\n💡 Use forceRegenerate=true to regenerate anyway`,
+            text: `✅ Using cached classes-summary.json (no code changes detected)\n\n📊 Cached analysis contains ${classesSummary.length} classes:\n${classesSummary.map((c: ClassSummary) => `- ${c.className}`).join('\n')}\n\n💡 Use forceRegenerate=true to regenerate anyway`,
           },
         ],
       };
@@ -906,26 +854,23 @@ class JavaDocumentationMCPServer {
       throw new Error(`No Java classes found in project path: ${projectPath}. Make sure the path contains .java files.`);
     }
     
-    const outputPath = path.join(this.config.outputPath, 'classes-summary.json');
-    await fs.writeFile(outputPath, JSON.stringify(classesSummary, null, 2));
-    
     // Save cache metadata
     await this.saveCacheMetadata(projectPath, classesSummary);
 
-    this.logInfo(`📄 Classes summary generated: ${outputPath}`);
+    this.logInfo(`📄 Classes summary generated`);
 
     return {
       content: [
         {
           type: 'text',
-          text: `✅ Successfully analyzed Java project and generated classes-summary.json at ${outputPath}\n\n📊 Found ${classesSummary.length} classes:\n${classesSummary.map(c => `- ${c.className}`).join('\n')}\n\n💾 Cache metadata saved for future runs`,
+          text: `✅ Successfully analyzed Java project and generated classes-summary.json\n\n📊 Found ${classesSummary.length} classes:\n${classesSummary.map(c => `- ${c.className}`).join('\n')}\n\n💾 Cache metadata saved for future runs`,
         },
       ],
     };
   }
 
   private async generateDocumentation(args: any): Promise<CallToolResult> {
-    const classesSummaryPath = args?.classesSummaryPath || path.join(this.config.outputPath, 'classes-summary.json');
+    const classesSummaryPath = args?.classesSummaryPath || path.join(this.config.outputPath, 'cache', 'classes-summary.json');
     const outputFormat = args?.outputFormat || this.config.docFormat;
     const outputDir = args?.outputDir || this.config.outputPath;
     const forceRegenerate = args?.forceRegenerate || false;
@@ -1034,7 +979,7 @@ class JavaDocumentationMCPServer {
     const shouldRegenerateClasses = await this.shouldRegenerateClassesSummary(projectPath, forceRegenerate);
     
     let classesSummary: ClassSummary[];
-    let classesSummaryPath = path.join(outputDir, 'classes-summary.json');
+    const classesSummaryPath = path.join(this.config.outputPath, 'cache', 'classes-summary.json');
     
     if (shouldRegenerateClasses) {
       this.logInfo('🔄 Analyzing Java project (source files changed)...');
@@ -1044,7 +989,7 @@ class JavaDocumentationMCPServer {
         throw new Error(`No Java classes found in project path: ${projectPath}. Make sure the path contains .java files in src/ directories.`);
       }
       
-      await fs.writeFile(classesSummaryPath, JSON.stringify(classesSummary, null, 2));
+      // Save cache metadata
       await this.saveCacheMetadata(projectPath, classesSummary);
       pipelineResults.push('🔄 Regenerated classes-summary.json (Java files changed)');
     } else {
@@ -1149,6 +1094,37 @@ class JavaDocumentationMCPServer {
         },
       ],
     };
+  }
+
+  private async shouldRegenerateDocumentation(forceRegenerate: boolean = false, classesSummaryWasRegenerated: boolean = false): Promise<boolean> {
+    if (forceRegenerate) {
+      this.logInfo('🔄 Force documentation regeneration requested');
+      return true;
+    }
+
+    // If classes-summary.json was just regenerated due to code changes, regenerate docs
+    if (classesSummaryWasRegenerated) {
+      this.logInfo('🔄 Classes summary was regenerated, documentation will also be regenerated');
+      return true;
+    }
+
+    // Check if documentation files exist
+    const docFiles = [
+      path.join(this.config.outputPath, 'architecturedesign.adoc'),
+      path.join(this.config.outputPath, 'detaileddesign.adoc'),
+      path.join(this.config.outputPath, 'openApiSpecification.adoc'),
+    ];
+
+    try {
+      for (const file of docFiles) {
+        await fs.access(file);
+      }
+      this.logInfo('✅ Documentation files exist, no regeneration needed');
+      return false;
+    } catch (error) {
+      this.logInfo('📄 Documentation files missing, will regenerate');
+      return true;
+    }
   }
 
   // All the existing parsing and documentation generation methods remain the same...
