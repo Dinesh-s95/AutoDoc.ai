@@ -3,6 +3,7 @@
 import { spawn } from 'child_process';
 import path from 'path';
 import fs from 'fs/promises';
+import { existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -274,6 +275,48 @@ class MCPServerLauncher {
     }
   }
 
+  async createAdocSummary() {
+    const releaseNotesDir = path.join(process.cwd(), '..', 'release-notes');
+    
+    // Create directory if it doesn't exist
+    await fs.mkdir(releaseNotesDir, { recursive: true });
+    
+    const files = await fs.readdir(releaseNotesDir);
+    const txtFiles = files.filter(f => f.endsWith('.txt'));
+    
+    if (txtFiles.length === 0) {
+      // Don't create AsciiDoc file if no txt files exist
+      throw new Error('No release note text files found to create summary');
+    }
+    
+    let adocContent = `= Release Notes Summary
+:toc: left
+:toclevels: 3
+:icons: font
+
+== Current Release Notes
+
+[cols="2,3,1", options="header"]
+|===
+|Ticket |Description |Release
+`;
+
+    for (const file of txtFiles) {
+      const content = await fs.readFile(path.join(releaseNotesDir, file), 'utf-8');
+      const [ticketId, description, quarter] = content.split(' & ');
+      // Create Jira link using the configured base URL
+      const jiraLink = `${this.config.jira.baseUrl}/browse/${ticketId}`;
+      adocContent += `
+|link:${jiraLink}[${ticketId}] |${description} |${quarter}`;
+    }
+
+    adocContent += '\n|===\n';
+    
+    // Write the AsciiDoc file
+    await fs.writeFile(path.join(releaseNotesDir, 'release-notes.adoc'), adocContent);
+    console.log('✅ Generated AsciiDoc summary: release-notes.adoc');
+  }
+
   async processAllServices() {
     // List of all services
     const services = [
@@ -342,6 +385,9 @@ class MCPServerLauncher {
       console.log('\n📝 Final Step: Generating Release Notes for All Services...');
       console.log('-'.repeat(70));
       
+      let releaseNotesGenerated = false;
+      let releaseNotesMessage = '';
+      
       try {
         // First generate the text file
         const releaseNotesCommand = JSON.stringify({
@@ -355,40 +401,6 @@ class MCPServerLauncher {
             }
           }
         });
-
-        // After generating the text file, create an AsciiDoc summary
-        const createAdocSummary = async () => {
-          const releaseNotesDir = path.join(process.cwd(), '..', 'release-notes');
-          const files = await fs.readdir(releaseNotesDir);
-          const txtFiles = files.filter(f => f.endsWith('.txt'));
-          
-          let adocContent = `= Release Notes Summary
-:toc: left
-:toclevels: 3
-:icons: font
-
-== Current Release Notes
-
-[cols="2,3,1", options="header"]
-|===
-|Ticket |Description |Release
-`;
-
-          for (const file of txtFiles) {
-            const content = await fs.readFile(path.join(releaseNotesDir, file), 'utf-8');
-            const [ticketId, description, quarter] = content.split(' & ');
-            // Create Jira link using the configured base URL
-            const jiraLink = `${this.config.jira.baseUrl}/browse/${ticketId}`;
-            adocContent += `
-|link:${jiraLink}[${ticketId}] |${description} |${quarter}`;
-          }
-
-          adocContent += '\n|===\n';
-          
-          // Write the AsciiDoc file
-          await fs.writeFile(path.join(releaseNotesDir, 'release-notes.adoc'), adocContent);
-          console.log('✅ Generated AsciiDoc summary: release-notes.adoc');
-        };
 
         // Start a new server instance for release notes
         const env = {
@@ -410,31 +422,62 @@ class MCPServerLauncher {
           stdio: ['pipe', 'pipe', 'pipe']
         });
 
-        serverProcess.stdin.write(releaseNotesCommand + '\n');
+        let serverOutput = '';
 
-        serverProcess.stdout.on('data', (data) => console.log(data.toString()));
-        serverProcess.stderr.on('data', (data) => console.log('🔧 Server Log:', data.toString().trim()));
+        serverProcess.stdout.on('data', (data) => {
+          const output = data.toString();
+          serverOutput += output;
+          console.log(output);
+        });
+        
+        serverProcess.stderr.on('data', (data) => {
+          const output = data.toString().trim();
+          serverOutput += output;
+          console.log('🔧 Server Log:', output);
+        });
+
+        serverProcess.stdin.write(releaseNotesCommand + '\n');
 
         await new Promise((resolve, reject) => {
           serverProcess.on('close', async (code) => {
             if (code === 0) {
-              // console.log('✅ Release notes text files generated successfully');
-              try {
-                await createAdocSummary();
-                resolve();
-              } catch (err) {
-                console.error('❌ Error generating AsciiDoc summary:', err.message);
-                reject(err);
+              // Check if the server output indicates no Jira ticket was found
+              const hasJiraTicket = !serverOutput.includes('No Jira ticket number found');
+              
+              if (hasJiraTicket) {
+                try {
+                  // Create AsciiDoc summary only if we have actual release notes
+                  await this.createAdocSummary();
+                  releaseNotesGenerated = true;
+                  releaseNotesMessage = 'Generated successfully';
+                } catch (err) {
+                  console.error('❌ Error generating AsciiDoc summary:', err.message);
+                  releaseNotesMessage = `Error generating summary: ${err.message}`;
+                  reject(err);
+                  return;
+                }
+              } else {
+                releaseNotesMessage = 'Skipped (no Jira ticket found in commit message)';
+                console.log('⏩ Release notes skipped - no Jira ticket found in last commit message');
               }
+              resolve();
             } else {
               console.error('❌ Failed to generate release notes');
+              releaseNotesMessage = `Failed with exit code ${code}`;
               reject(new Error(`Release notes generation failed with code ${code}`));
             }
           });
         });
       } catch (error) {
         console.error('❌ Error in release notes generation:', error.message);
+        releaseNotesMessage = `Error: ${error.message}`;
       }
+      
+      // Store the result for the summary
+      results.releaseNotes = {
+        generated: releaseNotesGenerated,
+        message: releaseNotesMessage
+      };
     }
 
     // Display final summary
@@ -447,9 +490,9 @@ class MCPServerLauncher {
     console.log('='.repeat(60));
     
     // Documentation Generation Summary
-    console.log('\n� Code Documentation Generation');
+    console.log('\n📚 Code Documentation Generation');
     console.log('-'.repeat(30));
-    console.log(`�📈 Total Services: ${totalServices}`);
+    console.log(`📈 Total Services: ${totalServices}`);
     console.log(`✅ Successful: ${results.successful.length}`);
     console.log(`❌ Failed: ${results.failed.length}`);
     
@@ -471,11 +514,19 @@ class MCPServerLauncher {
     console.log('\n📝 Release Notes Generation');
     console.log('-'.repeat(30));
     if (this.config.documentation.generateReleaseNotes) {
-      console.log(`📍 Status: ${results.failed.length === 0 ? '✅ Generated' : '⚠️ Partial Generation'}`);
-      console.log(`📂 Location: ${path.join(process.cwd(), '..', 'release-notes')}`);
-      console.log(`📄 Files Generated:`);
-      console.log(`   • release-notes.adoc (Summary)`);
-      console.log(`   • Individual release note text files`);
+      if (results.releaseNotes) {
+        if (results.releaseNotes.generated) {
+          console.log(`📍 Status: ✅ Generated`);
+          console.log(`📂 Location: ${path.join(process.cwd(), '..', 'release-notes')}`);
+          console.log(`📄 Files Generated:`);
+          console.log(`   • release-notes.adoc (Summary)`);
+          console.log(`   • Individual release note text files`);
+        } else {
+          console.log(`📍 Status: ⏩ ${results.releaseNotes.message}`);
+        }
+      } else {
+        console.log(`📍 Status: ❓ Unknown (check logs above)`);
+      }
     } else {
       console.log(`📍 Status: ⏩ Skipped (not enabled in configuration)`);
     }
