@@ -129,27 +129,281 @@ class ConfluenceUploader:
                 spaces = spaces_response.json().get('results', [])
                 available_keys = [s.get('key') for s in spaces]
                 print(f"Available spaces: {available_keys}")
-                if 'AUTOD' not in available_keys:
-                    print(f"❌ AUTOD space not found. Try one of: {available_keys}")
+                if SPACE_KEY not in available_keys:
+                    print(f"❌ {SPACE_KEY} space not found. Try one of: {available_keys}")
             return None
- 
+
+    def format_text(self, text):
+        """Format bold, italic, and other text formatting"""
+        # Handle bold text **text** or *text*
+        text = re.sub(r'\*\*(.*?)\*\*', r'<strong>\1</strong>', text)
+        text = re.sub(r'(?<!\*)\*([^*\s].*?[^*\s])\*(?!\*)', r'<strong>\1</strong>', text)
+        
+        # Handle italic text _text_
+        text = re.sub(r'_([^_\s].*?[^_\s])_', r'<em>\1</em>', text)
+        
+        # Handle inline code `code`
+        text = re.sub(r'`([^`]+)`', r'<code>\1</code>', text)
+        
+        # Handle links
+        text = re.sub(r'link:([^\[]+)\[([^\]]+)\]', r'<a href="\1">\2</a>', text)
+        text = re.sub(r'https?://[^\s\]]+', r'<a href="\g<0>">\g<0></a>', text)
+        
+        return text
+
+    def convert_adoc_to_html(self, content):
+        """Improved AsciiDoc to HTML conversion"""
+        lines = content.splitlines()
+        html = []
+        in_code_block = False
+        in_list = False
+        code_block_content = []
+        code_language = 'text'
+        
+        i = 0
+        while i < len(lines):
+            line = lines[i].rstrip()
+            
+            # Handle source blocks with language specification
+            if re.match(r'^\[source,(\w+)\]', line):
+                if in_list:
+                    html.append('</ul>')
+                    in_list = False
+                # Extract language
+                lang_match = re.match(r'^\[source,(\w+)\]', line)
+                code_language = lang_match.group(1) if lang_match else 'text'
+                i += 1
+                continue
+            
+            # Handle code blocks (various AsciiDoc formats)
+            elif line.startswith('----') or line.startswith('```'):
+                if in_code_block:
+                    # End of code block
+                    if code_block_content:
+                        html.append('<ac:structured-macro ac:name="code">')
+                        html.append(f'<ac:parameter ac:name="language">{code_language}</ac:parameter>')
+                        html.append('<ac:plain-text-body><![CDATA[')
+                        html.append('\n'.join(code_block_content))
+                        html.append(']]></ac:plain-text-body>')
+                        html.append('</ac:structured-macro>')
+                    in_code_block = False
+                    code_block_content = []
+                    code_language = 'text'
+                else:
+                    # Start of code block
+                    if in_list:
+                        html.append('</ul>')
+                        in_list = False
+                    in_code_block = True
+                    
+            elif in_code_block:
+                # Inside code block - collect content
+                code_block_content.append(line)
+                
+            elif line.startswith('= '):
+                if in_list:
+                    html.append('</ul>')
+                    in_list = False
+                html.append(f'<h1>{line[2:].strip()}</h1>')
+                
+            elif line.startswith('== '):
+                if in_list:
+                    html.append('</ul>')
+                    in_list = False
+                html.append(f'<h2>{line[3:].strip()}</h2>')
+                
+            elif line.startswith('=== '):
+                if in_list:
+                    html.append('</ul>')
+                    in_list = False
+                html.append(f'<h3>{line[4:].strip()}</h3>')
+                
+            elif line.startswith('==== '):
+                if in_list:
+                    html.append('</ul>')
+                    in_list = False
+                html.append(f'<h4>{line[5:].strip()}</h4>')
+                
+            elif line.startswith('===== '):
+                if in_list:
+                    html.append('</ul>')
+                    in_list = False
+                html.append(f'<h5>{line[6:].strip()}</h5>')
+                
+            elif line.strip().startswith(('* ', '- ')):
+                # Handle lists properly
+                if not in_list:
+                    html.append('<ul>')
+                    in_list = True
+                list_content = line.strip()[2:].strip()
+                list_content = self.format_text(list_content)
+                html.append(f'<li>{list_content}</li>')
+                
+            elif line.strip().startswith('. '):
+                # Numbered list
+                if in_list:
+                    html.append('</ul>')
+                    in_list = False
+                html.append('<ol>')
+                list_content = line.strip()[2:].strip()
+                list_content = self.format_text(list_content)
+                html.append(f'<li>{list_content}</li>')
+                
+                # Look ahead for more numbered items
+                j = i + 1
+                while j < len(lines) and lines[j].strip().startswith('. '):
+                    list_content = lines[j].strip()[2:].strip()
+                    list_content = self.format_text(list_content)
+                    html.append(f'<li>{list_content}</li>')
+                    j += 1
+                html.append('</ol>')
+                i = j - 1  # Skip the processed lines
+                
+            elif line.strip() == '':
+                # Close list on empty line
+                if in_list:
+                    html.append('</ul>')
+                    in_list = False
+                html.append('<br/>')
+                
+            elif line.strip():
+                # Regular paragraph
+                if in_list:
+                    html.append('</ul>')
+                    in_list = False
+                formatted_line = self.format_text(line.strip())
+                html.append(f'<p>{formatted_line}</p>')
+            
+            i += 1
+        
+        # Close any remaining open tags
+        if in_list:
+            html.append('</ul>')
+        if in_code_block and code_block_content:
+            html.append('<ac:structured-macro ac:name="code">')
+            html.append(f'<ac:parameter ac:name="language">{code_language}</ac:parameter>')
+            html.append('<ac:plain-text-body><![CDATA[')
+            html.append('\n'.join(code_block_content))
+            html.append(']]></ac:plain-text-body>')
+            html.append('</ac:structured-macro>')
+        
+        return '\n'.join(html)
+
+    def convert_markdown_to_html(self, content):
+        """Basic markdown to HTML conversion"""
+        lines = content.splitlines()
+        html = []
+        in_code_block = False
+        code_content = []
+        code_language = 'text'
+        in_list = False
+        
+        for line in lines:
+            if line.startswith('```'):
+                if in_code_block:
+                    # End code block
+                    html.append('<ac:structured-macro ac:name="code">')
+                    html.append(f'<ac:parameter ac:name="language">{code_language}</ac:parameter>')
+                    html.append('<ac:plain-text-body><![CDATA[')
+                    html.append('\n'.join(code_content))
+                    html.append(']]></ac:plain-text-body>')
+                    html.append('</ac:structured-macro>')
+                    code_content = []
+                    in_code_block = False
+                    code_language = 'text'
+                else:
+                    # Start code block
+                    if in_list:
+                        html.append('</ul>')
+                        in_list = False
+                    in_code_block = True
+                    # Extract language if specified
+                    lang_match = re.match(r'^```(\w+)', line)
+                    code_language = lang_match.group(1) if lang_match else 'text'
+                    
+            elif in_code_block:
+                code_content.append(line)
+                
+            elif line.startswith('# '):
+                if in_list:
+                    html.append('</ul>')
+                    in_list = False
+                html.append(f'<h1>{line[2:].strip()}</h1>')
+                
+            elif line.startswith('## '):
+                if in_list:
+                    html.append('</ul>')
+                    in_list = False
+                html.append(f'<h2>{line[3:].strip()}</h2>')
+                
+            elif line.startswith('### '):
+                if in_list:
+                    html.append('</ul>')
+                    in_list = False
+                html.append(f'<h3>{line[4:].strip()}</h3>')
+                
+            elif line.strip().startswith(('* ', '- ')):
+                if not in_list:
+                    html.append('<ul>')
+                    in_list = True
+                content = line.strip()[2:].strip()
+                content = self.format_text(content)
+                html.append(f'<li>{content}</li>')
+                
+            elif line.strip() == '':
+                if in_list:
+                    html.append('</ul>')
+                    in_list = False
+                html.append('<br/>')
+                
+            elif line.strip():
+                if in_list:
+                    html.append('</ul>')
+                    in_list = False
+                formatted = self.format_text(line.strip())
+                html.append(f'<p>{formatted}</p>')
+        
+        # Close any remaining tags
+        if in_list:
+            html.append('</ul>')
+        if in_code_block and code_content:
+            html.append('<ac:structured-macro ac:name="code">')
+            html.append(f'<ac:parameter ac:name="language">{code_language}</ac:parameter>')
+            html.append('<ac:plain-text-body><![CDATA[')
+            html.append('\n'.join(code_content))
+            html.append(']]></ac:plain-text-body>')
+            html.append('</ac:structured-macro>')
+        
+        return '\n'.join(html)
+
     def render_plantuml_blocks(self, content, doc_dir):
-        """
-        Detects PlantUML blocks and replaces them with <ac:image> tags using PlantUML server URLs.
-        """
+        """Enhanced PlantUML and source block detection"""
         def replace_block(match):
-            uml_code = match.group(1) or match.group(2) or match.group(3)
+            # Get the captured groups
+            plantuml_block = match.group(1) if len(match.groups()) > 0 and match.group(1) else None
+            markdown_block = match.group(2) if len(match.groups()) > 1 and match.group(2) else None  
+            raw_block = match.group(3) if len(match.groups()) > 2 and match.group(3) else None
+            
+            uml_code = plantuml_block or markdown_block or raw_block
+            
             if uml_code:
                 uml_code = uml_code.strip()
-                url = plantuml_url(uml_code)
-                return f'<ac:image><ri:url ri:value="{url}" /></ac:image>'
-            return match.group(0)  # fallback if nothing matched
+                if '@startuml' in uml_code and '@enduml' in uml_code:
+                    try:
+                        url = plantuml_url(uml_code)
+                        return f'<ac:image><ri:url ri:value="{url}" /></ac:image>'
+                    except Exception as e:
+                        print(f"Error generating PlantUML URL: {e}")
+                        return f'<ac:structured-macro ac:name="code"><ac:parameter ac:name="language">plantuml</ac:parameter><ac:plain-text-body><![CDATA[{uml_code}]]></ac:plain-text-body></ac:structured-macro>'
+            
+            return match.group(0)  # Return original if no match
 
+        # Enhanced pattern to catch PlantUML blocks
         pattern = re.compile(
-        r'(?:\[plantuml.*?\]\s*[-.]{4,}\s*(@startuml.*?@enduml)\s*[-.]{4,})|' +  # [plantuml] ---- blocks
-        r'(?:```plantuml\s*(@startuml.*?@enduml)\s*```)|' +                      # markdown ```plantuml blocks
-        r'(?:^(@startuml.*?@enduml)$)',                                          # raw blocks
-        re.DOTALL | re.IGNORECASE | re.MULTILINE
+            r'(?:\[plantuml.*?\]\s*[-.]{4,}\s*(@startuml.*?@enduml)\s*[-.]{4,})|' +  # [plantuml] blocks
+            r'(?:```plantuml\s*(@startuml.*?@enduml)\s*```)|' +                      # markdown plantuml
+            r'(?:^(@startuml.*?@enduml)$)',                                          # raw plantuml
+            re.DOTALL | re.IGNORECASE | re.MULTILINE
         )
 
         return pattern.sub(replace_block, content)
@@ -190,39 +444,18 @@ class ConfluenceUploader:
         url = f"{self.base_url}/content"
         response = self._request("POST", url, data=json.dumps(data))
         return response.json().get('id') if response else None
- 
-    def convert_adoc_to_html(self, content):
-        html = []
-        in_code = False
-        for line in content.splitlines():
-            if line.strip().startswith('----'):
-                html.append('</code></pre>' if in_code else '<pre><code>')
-                in_code = not in_code
-            elif in_code:
-                html.append(line)
-            elif line.startswith('= '): html.append(f"<h1>{line[2:].strip()}</h1>")
-            elif line.startswith('== '): html.append(f"<h2>{line[3:].strip()}</h2>")
-            elif line.startswith('=== '): html.append(f"<h3>{line[4:].strip()}</h3>")
-            elif line.startswith('==== '): html.append(f"<h4>{line[5:].strip()}</h4>")
-            elif line.strip().startswith(('* ', '- ')):
-                html.append(f"<li>{line.strip()[2:]}</li>")
-            elif '*' in line:
-                html.append(f"<p>{line.replace('*', '<strong>', 1).replace('*', '</strong>', 1)}</p>")
-            elif line.strip():
-                html.append(f"<p>{line}</p>")
-            else:
-                html.append('<br/>')
-        if in_code:
-            html.append('</code></pre>')
-        return '\n'.join(html)
- 
+
     def convert_to_html(self, content, ext):
+        """Updated conversion method with PlantUML processing"""
+        # First process PlantUML blocks
+        content = self.render_plantuml_blocks(content, Path('.'))
+        
         if ext == '.adoc':
             return self.convert_adoc_to_html(content)
         elif ext == '.md':
-            return f"<pre><code>{content}</code></pre>"
+            return self.convert_markdown_to_html(content)
         else:
-            return f"<pre><code>{content}</code></pre>"
+            return f'<ac:structured-macro ac:name="code"><ac:plain-text-body><![CDATA[{content}]]></ac:plain-text-body></ac:structured-macro>'
  
     def read_file(self, path):
         try:
@@ -298,7 +531,6 @@ class ConfluenceUploader:
                     print(f"  Could not read file: {f}")
                     continue
  
-                content = self.render_plantuml_blocks(content, Path(f).parent)
                 html = self.convert_to_html(content, Path(f).suffix)
                 page = self.find_existing_page(title)
                 page_content = f"<h3>{title}</h3><p>File: {fname}</p><hr/>{html}"
@@ -306,10 +538,9 @@ class ConfluenceUploader:
                     print(f"  Updating existing page: {title}")
                     result = self.update_page(page['id'], title, page_content, page['version']['number'], svc_id)
                     print(f"  Update result: {result}")
-                    page_id = page['id']
                 else:
                     print(f"  Creating new page: {title}")
-                    result = self.create_page(title, page_content, svc_id)
+                    page_id = self.create_page(title, page_content, svc_id)
                     print(f"  Create result: {page_id}")
  
         print("Upload complete.")
