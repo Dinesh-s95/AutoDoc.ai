@@ -1,47 +1,44 @@
-= Vehicle Management API Documentation
+== Interface Concept
+[id='vehiclemanagement']
+The Vehiclemanagement service provides API operations for managing vehiclemanagement domain resources.
 
-== Introduction
+=== vehiclemanagement-external-api
 
-The Vehicle Management API provides services for registering and verifying vehicle registrations. It is designed for use by automotive companies to manage vehicle information efficiently.
+NOTE: A source block marked with class openapi will be wrapped in an OpenAPI Documentation Macro. (see https://marketplace.atlassian.com/apps/1215176/open-api-documentation-for-confluence?hosting=cloud&tab=overview[Open API Documentation for Confluence])!
 
-=== Authentication Requirements
-
-Currently, no authentication is required to access the API endpoints.
-
-=== Base URL and Versioning
-
-The API is accessible at `http://api.example.com/v1`. This documentation refers to version 1 of the API.
-
-=== How to Use This Specification
-
-This document is structured according to the OpenAPI 3.0 specification. It can be imported into tools like Swagger UI, Postman, or Insomnia for interactive exploration and testing of the API endpoints.
-
-== OpenAPI 3.0 YAML Specification
-
-[source,yaml]
+[source,openapi]
 ----
+```yaml
 openapi: 3.0.0
 info:
   title: Vehicle Management API
   version: 1.0.0
-  description: API for managing vehicle registrations
 servers:
-  - url: http://api.example.com/v1
+  - url: /api
 paths:
-  /vehicles/register:
+  /vehicle/register:
     post:
-      summary: Register a new vehicle
-      operationId: registerVehicle
       tags:
         - Vehicle
+      summary: Register a new vehicle
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/Vehicle'
+            examples:
+              example1:
+                summary: Example Vehicle
+                value:
+                  brand: Toyota
+                  country: Japan
+                  device: Hybrid
+                  model: Prius
+                  sop: 2022-01-01
+                  vin: "JTDKBRFU8J3000001"
       responses:
-        '201':
+        '200':
           description: Vehicle registered successfully
           content:
             application/json:
@@ -49,16 +46,11 @@ paths:
                 $ref: '#/components/schemas/Vehicle'
         '400':
           description: Invalid input
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-  /vehicles/verify:
+  /vehicle/verify:
     get:
-      summary: Verify vehicle registration
-      operationId: verifyRegistration
       tags:
         - Vehicle
+      summary: Verify vehicle registration
       parameters:
         - in: query
           name: vin
@@ -70,134 +62,58 @@ paths:
           name: brand
           schema:
             type: string
-          required: false
+          required: true
           description: Brand of the vehicle
         - in: query
           name: country
           schema:
             type: string
-          required: false
+          required: true
           description: Country of registration
       responses:
         '200':
-          description: Verification successful
+          description: Vehicle is verified
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Vehicle'
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: "Verified"
         '404':
           description: Vehicle not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
+
 components:
   schemas:
     Vehicle:
       type: object
       properties:
-        vin:
-          type: string
-          description: Vehicle Identification Number
         brand:
           type: string
-          description: Brand of the vehicle
+          example: "Toyota"
         country:
           type: string
-          description: Country of registration
-        model:
-          type: string
-          description: Model of the vehicle
+          example: "Japan"
         device:
           type: string
-          description: Device identifier
+          example: "Hybrid"
+        model:
+          type: string
+          example: "Prius"
         sop:
           type: string
           format: date
-          description: Start of production date
+          example: "2022-01-01"
+        vin:
+          type: string
+          example: "JTDKBRFU8J3000001"
       required:
-        - vin
         - brand
         - country
-    Error:
-      type: object
-      properties:
-        message:
-          type: string
-          description: Error message
-        code:
-          type: integer
-          format: int32
-          description: Error code
+        - device
+        - model
+        - sop
+        - vin
+```
 ----
-
-== API Documentation
-
-=== Endpoint Descriptions and Usage Examples
-
-==== Register Vehicle
-
-Endpoint to register a new vehicle in the system.
-
-===== Request Example
-
-[source,json]
-----
-{
-  "vin": "1HGBH41JXMN109186",
-  "brand": "Honda",
-  "country": "Japan",
-  "model": "Civic",
-  "device": "X7GTR",
-  "sop": "2021-06-15"
-}
-----
-
-===== Response Example
-
-[source,json]
-----
-{
-  "vin": "1HGBH41JXMN109186",
-  "brand": "Honda",
-  "country": "Japan",
-  "model": "Civic",
-  "device": "X7GTR",
-  "sop": "2021-06-15"
-}
-----
-
-==== Verify Registration
-
-Endpoint to verify the registration details of a vehicle.
-
-===== Request Example
-
-[source,http]
-----
-GET /vehicles/verify?vin=1HGBH41JXMN109186&brand=Honda&country=Japan HTTP/1.1
-Host: api.example.com
-----
-
-===== Response Example
-
-[source,json]
-----
-{
-  "vin": "1HGBH41JXMN109186",
-  "brand": "Honda",
-  "country": "Japan",
-  "model": "Civic",
-  "device": "X7GTR",
-  "sop": "2021-06-15"
-}
-----
-
-=== Common Error Codes and Their Meanings
-
-- `400` - Bad Request: The request was invalid or cannot be served. Check the input.
-- `404` - Not Found: The specified resource was not found.
-
-=== Rate Limiting Information
-
-Currently, there is no rate limiting in place for the API.

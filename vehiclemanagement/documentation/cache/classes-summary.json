@@ -1,0 +1,133 @@
+[
+  {
+    "className": "Vehicle",
+    "annotations": [
+      "Entity",
+      "Id",
+      "NotBlank",
+      "NotNull",
+      "Table"
+    ],
+    "methods": [
+      "public LocalDate getSop()",
+      "public String getBrand()",
+      "public String getCountry()",
+      "public String getDevice()",
+      "public String getModel()",
+      "public String getVin()",
+      "public void setBrand(final String brand)",
+      "public void setCountry(final String country)",
+      "public void setDevice(final String device)",
+      "public void setModel(final String model)",
+      "public void setSop(final LocalDate sop)",
+      "public void setVin(final String vin)"
+    ],
+    "endpoints": [],
+    "fields": [
+      "brand : String",
+      "country : String",
+      "device : String",
+      "model : String",
+      "sop : LocalDate",
+      "vin : String"
+    ],
+    "isEntity": true,
+    "isRestController": false
+  },
+  {
+    "className": "VehiclemanagementApplication",
+    "annotations": [
+      "SpringBootApplication"
+    ],
+    "methods": [
+      "public static void main(String[] args)"
+    ],
+    "endpoints": [],
+    "fields": [],
+    "isEntity": false,
+    "isRestController": false
+  },
+  {
+    "className": "VehicleController",
+    "annotations": [
+      "Autowired",
+      "GetMapping",
+      "PostMapping",
+      "RequestBody",
+      "RequestMapping",
+      "RequestParam",
+      "RestController",
+      "Validated"
+    ],
+    "methods": [
+      "@GetMapping(\"/verify\") public ResponseEntity<Object> verifyRegistration(@RequestParam final String vin, final String brand, final String country)",
+      "@PostMapping(\"/register\") public ResponseEntity<Object> registerVehicle(@RequestBody @Validated Vehicle vehicle)"
+    ],
+    "endpoints": [
+      {
+        "annotation": "PostMapping",
+        "method": "@PostMapping(\"/register\") public ResponseEntity<Object> registerVehicle(@RequestBody @Validated Vehicle vehicle)",
+        "url": "/api/vehicle/register",
+        "inputs": [
+          {
+            "annotation": "Validated",
+            "type": "Vehicle",
+            "name": "vehicle"
+          }
+        ],
+        "output": "ResponseEntity<Object>"
+      },
+      {
+        "annotation": "GetMapping",
+        "method": "@GetMapping(\"/verify\") public ResponseEntity<Object> verifyRegistration(@RequestParam final String vin, final String brand, final String country)",
+        "url": "/api/vehicle/verify",
+        "inputs": [
+          {
+            "annotation": "RequestParam",
+            "type": "final",
+            "name": "String"
+          },
+          {
+            "annotation": "",
+            "type": "final",
+            "name": "String"
+          },
+          {
+            "annotation": "",
+            "type": "final",
+            "name": "String"
+          }
+        ],
+        "output": "ResponseEntity<Object>"
+      }
+    ],
+    "fields": [
+      "vehicleRepository : VehicleRepository"
+    ],
+    "isEntity": false,
+    "isRestController": true
+  },
+  {
+    "className": "VehicleRepository",
+    "annotations": [
+      "Repository"
+    ],
+    "methods": [],
+    "endpoints": [],
+    "fields": [],
+    "isEntity": false,
+    "isRestController": false
+  },
+  {
+    "className": "VehiclemanagementApplicationTests",
+    "annotations": [
+      "SpringBootTest",
+      "Test"
+    ],
+    "methods": [],
+    "endpoints": [],
+    "fields": [],
+    "isEntity": false,
+    "isRestController": false
+  }
+]

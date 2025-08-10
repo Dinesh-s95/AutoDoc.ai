@@ -1,22 +1,27 @@
-Below is the OpenAPI 3.0 specification in YAML format for the given Spring Boot application, focusing on the `UserController`. This spec includes detailed endpoint documentation, security schemes, and schema definitions.
+== Interface Concept
+[id='identityprovider']
+The Identityprovider service provides API operations for managing identityprovider domain resources.
 
+=== identityprovider-external-api
+
+NOTE: A source block marked with class openapi will be wrapped in an OpenAPI Documentation Macro. (see https://marketplace.atlassian.com/apps/1215176/open-api-documentation-for-confluence?hosting=cloud&tab=overview[Open API Documentation for Confluence])!
+
+[source,openapi]
+----
 ```yaml
 openapi: 3.0.0
 info:
   title: Identity Provider API
   version: 1.0.0
-  description: API for managing user authentication and registration
 servers:
   - url: /idp
 paths:
   /users/register:
     post:
       tags:
-        - User Management
+        - User
       summary: Register a new user
-      operationId: registerUser
       requestBody:
-        description: User data for registration
         required: true
         content:
           application/json:
@@ -24,8 +29,10 @@ paths:
               $ref: '#/components/schemas/Users'
             examples:
               example1:
+                summary: Example User
                 value:
-                  username: "newuser"
+                  username: "johndoe"
+                  email: "johndoe@example.com"
                   password: "password123"
       responses:
         '200':
@@ -36,16 +43,12 @@ paths:
                 $ref: '#/components/schemas/Users'
         '400':
           description: Bad request
-        '500':
-          description: Internal Server Error
   /users/login:
     post:
       tags:
-        - User Management
+        - User
       summary: User login
-      operationId: loginUser
       requestBody:
-        description: User login credentials
         required: true
         content:
           application/json:
@@ -53,9 +56,10 @@ paths:
               $ref: '#/components/schemas/Users'
             examples:
               example1:
+                summary: Example User
                 value:
-                  username: "user"
-                  password: "password"
+                  username: "johndoe"
+                  password: "password123"
       responses:
         '200':
           description: Login successful
@@ -65,8 +69,6 @@ paths:
                 $ref: '#/components/schemas/AuthResponse'
         '401':
           description: Unauthorized
-        '500':
-          description: Internal Server Error
 components:
   schemas:
     Users:
@@ -74,8 +76,14 @@ components:
       properties:
         username:
           type: string
+          example: "johndoe"
+        email:
+          type: string
+          example: "johndoe@example.com"
         password:
           type: string
+          format: password
+          example: "password123"
       required:
         - username
         - password
@@ -84,25 +92,19 @@ components:
       properties:
         token:
           type: string
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
         refreshToken:
           type: string
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
 security:
   - bearerAuth: []
+securitySchemes:
+  bearerAuth:
+    type: http
+    scheme: bearer
+    bearerFormat: JWT
+tags:
+  - name: User
+    description: Operations related to users
 ```
-
-### Explanation:
-
-1. **Overview Section**: The API title, version, and base path are defined at the top of the document. The description provides a brief overview of the API's purpose.
-
-2. **Paths**: Each endpoint from the `UserController` is documented with HTTP methods, request bodies, responses, and examples. Tags are used to group operations logically.
-
-3. **Components**: JSON schemas for `Users` and `AuthResponse` are defined under `components.schemas`. These schemas are referenced in the request and response bodies to ensure consistency and reusability.
-
-4. **Security**: A JWT-based security scheme is included under `components.securitySchemes`. This is applied globally to all endpoints, as specified in the `security` section at the bottom of the document.
-
-This YAML file is ready to be imported into tools like Swagger Editor for validation, Postman for API testing, or any API Gateway that supports OpenAPI 3.0 specifications.
+----

@@ -1,10 +1,20 @@
+== Interface Concept
+[id='enrollment']
+The Enrollment service provides API operations for managing enrollment domain resources.
+
+=== enrollment-external-api
+
+NOTE: A source block marked with class openapi will be wrapped in an OpenAPI Documentation Macro. (see https://marketplace.atlassian.com/apps/1215176/open-api-documentation-for-confluence?hosting=cloud&tab=overview[Open API Documentation for Confluence])!
+
+[source,openapi]
+----
 ```yaml
 openapi: 3.0.0
 info:
   title: Enrollment API
   version: 1.0.0
 servers:
-  - url: /idp
+  - url: /api/v1
 paths:
   /enrollment/nominate-primary:
     post:
@@ -12,12 +22,17 @@ paths:
         - Enrollment
       summary: Nominate a primary user
       operationId: nominatePrimary
-      parameters:
-        - name: username
-          in: query
-          required: true
-          schema:
-            type: string
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+              required:
+                - username
       responses:
         '200':
           description: Successful operation
@@ -25,29 +40,38 @@ paths:
             text/plain:
               schema:
                 type: string
-                example: "Nomination successful"
+              example: "Nomination successful"
         '400':
           description: Bad request
-        '401':
-          description: Unauthorized
-      security:
-        - bearerAuth: []
+  /enrollment/nominate-secondary:
+    post:
+      tags:
+        - Enrollment
+      summary: Nominate a secondary user
+      operationId: nominateSecondary
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+              required:
+                - username
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: "Nomination successful"
+        '400':
+          description: Bad request
 components:
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
   schemas:
-    UserResponseDTO:
-      type: object
-      properties:
-        mobilityUserId:
-          type: string
-        username:
-          type: string
-        vin:
-          type: string
     Enrollment:
       type: object
       properties:
@@ -60,6 +84,23 @@ components:
           type: string
         vin:
           type: string
-security:
-  - bearerAuth: []
+      required:
+        - id
+        - role
+        - username
+        - vin
+    UserResponseDTO:
+      type: object
+      properties:
+        mobilityUserId:
+          type: string
+        username:
+          type: string
+        vin:
+          type: string
+      required:
+        - mobilityUserId
+        - username
+        - vin
 ```
+----
