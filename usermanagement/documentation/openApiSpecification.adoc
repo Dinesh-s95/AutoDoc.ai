@@ -1,71 +1,75 @@
-Here is the OpenAPI 3.0 specification for the provided Spring Boot application, focusing on the UserManagementController and its operations:
+== Interface Concept
+[id='usermanagement']
+The Usermanagement service provides API operations for managing usermanagement domain resources.
 
+=== usermanagement-external-api
+
+NOTE: A source block marked with class openapi will be wrapped in an OpenAPI Documentation Macro. (see https://marketplace.atlassian.com/apps/1215176/open-api-documentation-for-confluence?hosting=cloud&tab=overview[Open API Documentation for Confluence])!
+
+[source,openapi]
+----
 ```yaml
 openapi: 3.0.0
 info:
   title: User Management API
   version: 1.0.0
-  description: API for managing users and their vehicle assignments in the system.
 servers:
-  - url: /idp
-    description: Base path for all the endpoints
-
+  - url: /api/v1
 paths:
   /user-management/onboard:
     post:
       tags:
         - User Management
       summary: Onboard a new user
-      description: Registers a new user with a username and password.
       operationId: onboardUser
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UserCredentials'
-            examples:
-              example1:
-                summary: Example User
-                value:
-                  username: "john_doe"
-                  password: "securePassword123"
+              type: object
+              properties:
+                username:
+                  type: string
+                  example: "john_doe"
+                password:
+                  type: string
+                  example: "s3cr3t"
       responses:
         '200':
-          description: User successfully onboarded
+          description: User onboarded successfully
           content:
             text/plain:
               schema:
                 type: string
                 example: "User onboarded successfully"
         '400':
-          description: Bad request, parameters missing or invalid
-        '500':
-          description: Internal server error
-      security:
-        - bearerAuth: []
-
+          description: Bad request
   /user-management/assign-vehicle:
     post:
       tags:
         - User Management
       summary: Assign a vehicle to a user
-      description: Assigns a vehicle identified by VIN to a user.
       operationId: assignVehicle
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/VehicleAssignment'
-            examples:
-              example1:
-                summary: Example Assignment
-                value:
-                  username: "john_doe"
-                  vin: "1HGCM82633A004352"
-                  brand: "Honda"
-                  country: "USA"
+              type: object
+              properties:
+                username:
+                  type: string
+                  example: "john_doe"
+                vin:
+                  type: string
+                  example: "1HGCM82633A004352"
+                brand:
+                  type: string
+                  example: "Toyota"
+                country:
+                  type: string
+                  example: "USA"
       responses:
         '200':
           description: Vehicle assigned successfully
@@ -75,63 +79,27 @@ paths:
                 type: string
                 example: "Vehicle assigned successfully"
         '400':
-          description: Bad request, parameters missing or invalid
-        '500':
-          description: Internal server error
-      security:
-        - bearerAuth: []
-
+          description: Bad request
 components:
   schemas:
-    UserCredentials:
+    MobilityUser:
       type: object
       properties:
-        username:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        mobilityUserId:
           type: string
-          example: "john_doe"
-        password:
+          example: "MU12345"
+        role:
           type: string
-          format: password
-          example: "securePassword123"
-      required:
-        - username
-        - password
-
-    VehicleAssignment:
-      type: object
-      properties:
+          example: "driver"
         username:
           type: string
           example: "john_doe"
         vin:
           type: string
           example: "1HGCM82633A004352"
-        brand:
-          type: string
-          example: "Honda"
-        country:
-          type: string
-          example: "USA"
-      required:
-        - username
-        - vin
-        - brand
-        - country
-
-securitySchemes:
-  bearerAuth:
-    type: http
-    scheme: bearer
-    bearerFormat: JWT
-
-security:
-  - bearerAuth: []
 ```
-
-### Explanation:
-- **Overview Section**: Provides basic information about the API including title, version, and a brief description.
-- **Paths**: Defined for each endpoint derived from the methods in the `UserManagementController`. Each path includes method operations (POST in this case), a summary, description, operation ID, request body schema, example payloads, and possible responses.
-- **Components**: Defines JSON schemas for the request bodies (`UserCredentials` and `VehicleAssignment`) used in the endpoints.
-- **Security**: Includes a JWT-based security scheme for the API, assuming JWT is used for authentication as per the initial requirements.
-
-This specification should be validatable in tools like Swagger Editor and can be directly used in API Gateways or imported into tools like Postman for testing.
+----

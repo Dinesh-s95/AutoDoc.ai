@@ -1,10 +1,20 @@
+== Interface Concept
+[id='enrollment']
+The Enrollment service provides API operations for managing enrollment domain resources.
+
+=== enrollment-external-api
+
+NOTE: A source block marked with class openapi will be wrapped in an OpenAPI Documentation Macro. (see https://marketplace.atlassian.com/apps/1215176/open-api-documentation-for-confluence?hosting=cloud&tab=overview[Open API Documentation for Confluence])!
+
+[source,openapi]
+----
 ```yaml
 openapi: 3.0.0
 info:
   title: Enrollment API
   version: 1.0.0
 servers:
-  - url: /idp
+  - url: /api/v1
 paths:
   /enrollment/nominate-primary:
     post:
@@ -18,6 +28,7 @@ paths:
           required: true
           schema:
             type: string
+          example: "john_doe"
       responses:
         '200':
           description: Successful operation
@@ -25,29 +36,15 @@ paths:
             text/plain:
               schema:
                 type: string
-                example: "Nomination successful"
+              example: "Nomination successful"
         '400':
           description: Bad request
         '401':
           description: Unauthorized
-      security:
-        - bearerAuth: []
+        '500':
+          description: Internal Server Error
 components:
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
   schemas:
-    UserResponseDTO:
-      type: object
-      properties:
-        mobilityUserId:
-          type: string
-        username:
-          type: string
-        vin:
-          type: string
     Enrollment:
       type: object
       properties:
@@ -60,6 +57,20 @@ components:
           type: string
         vin:
           type: string
-security:
-  - bearerAuth: []
+      required:
+        - id
+        - username
+    UserResponseDTO:
+      type: object
+      properties:
+        mobilityUserId:
+          type: string
+        username:
+          type: string
+        vin:
+          type: string
+      required:
+        - mobilityUserId
+        - username
 ```
+----

@@ -570,11 +570,76 @@ class JavaDocumentationMCPServer {
     return `${year}.${quarter}`;
   }
 
+
+  private async getCurrentGitBranch(projectPath: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const git = spawn('git', ['branch', '--show-current'], { 
+        cwd: projectPath,
+        stdio: 'pipe'
+      });
+
+      let output = '';
+      let error = '';
+
+      git.stdout.on('data', (data) => {
+        output += data.toString();
+      });
+
+      git.stderr.on('data', (data) => {
+        error += data.toString();
+      });
+
+      git.on('close', (code) => {
+        this.logDebug(`Git branch command finished with code ${code}, output: "${output.trim()}", error: "${error.trim()}"`);
+        
+        if (code !== 0) {
+          const errorMessage = error.trim() || `Git branch command failed with exit code ${code}`;
+          this.logError(`Git branch command failed with code ${code}: ${errorMessage}`);
+          reject(new Error(`Git branch command failed with code ${code}: ${errorMessage}`));
+          return;
+        }
+
+        const currentBranch = output.trim();
+        if (!currentBranch) {
+          this.logError('Git branch command returned empty output - could not determine current branch');
+          reject(new Error('Could not determine current Git branch'));
+          return;
+        }
+
+        this.logDebug(`Current Git branch: ${currentBranch}`);
+        resolve(currentBranch);
+      });
+
+      git.on('error', (err) => {
+        this.logError(`Failed to execute git branch command: ${err.message}`, err);
+        reject(new Error(`Failed to execute git branch command: ${err.message}`));
+      });
+    });
+  }
+
   private async generateReleaseNotes(args: any): Promise<CallToolResult> {
     // Use the root directory (proto-calls-autodoc) for Git operations and release notes
     const gitRepoPath = path.join(process.cwd(), '..');
     const outputDir = args?.outputDir || path.join(gitRepoPath, 'release-notes');
-    const branch = args?.branch || 'testJiraIntegration';
+    
+    let branch: string;
+    
+    // Determine which branch to use
+    if (args?.branch) {
+      // Use explicitly provided branch
+      branch = args.branch;
+      this.logInfo(`🌿 Using explicitly provided branch: ${branch}`);
+    } else {
+      // Auto-detect current branch
+      try {
+        branch = await this.getCurrentGitBranch(gitRepoPath);
+        this.logInfo(`🌿 Auto-detected current branch: ${branch}`);
+      } catch (error) {
+        this.logError('Failed to detect current branch, falling back to default', error);
+        branch = 'main'; // Fallback to main instead of testJiraIntegration
+        this.logInfo(`🌿 Using fallback branch: ${branch}`);
+      }
+    }
 
     try {
       // Check if .git directory exists in the root repository
@@ -586,6 +651,7 @@ class JavaDocumentationMCPServer {
       }
 
       this.logInfo(`🏷️  Generating release notes in root directory: ${gitRepoPath}`);
+      this.logInfo(`🌿 Using branch: ${branch}`);
 
       // Get the last commit information from the root repository
       this.logDebug('Fetching last commit information...');
@@ -597,7 +663,7 @@ class JavaDocumentationMCPServer {
           content: [
             {
               type: 'text',
-              text: `⚠️  No Jira ticket number found in the last commit message.\n\nCommit: ${commitInfo.hash.substring(0, 8)} - "${commitInfo.message}"\n\n💡 Expected format: "TICKET-123 your commit message" where TICKET-123 is your Jira ticket number.`,
+              text: `⚠️  No Jira ticket number found in the last commit message on branch '${branch}'.\n\nCommit: ${commitInfo.hash.substring(0, 8)} - "${commitInfo.message}"\n\n💡 Expected format: "TICKET-123 your commit message" where TICKET-123 is your Jira ticket number.`,
             },
           ],
         };
@@ -612,12 +678,13 @@ class JavaDocumentationMCPServer {
       try {
         await fs.access(filePath);
         // File exists, skip generation
-        this.logInfo(`📝 Skipping release note generation since its already exists for ticket ${commitInfo.ticketNumber}`);
+        this.logInfo(`📝 Skipping release note generation since it already exists for ticket ${commitInfo.ticketNumber}`);
         return {
           content: [
             {
               type: 'text',
               text: `ℹ️ Release note already exists for ${commitInfo.ticketNumber}\n\n` +
+                    `🌿 Branch: ${branch}\n` +
                     `📁 File: ${fileName}\n` +
                     `📂 Location: ${filePath}\n\n` +
                     `💡 Skipping generation to avoid duplicate entries.`,
@@ -650,6 +717,7 @@ class JavaDocumentationMCPServer {
             {
               type: 'text',
               text: `✅ Release note generated successfully!\n\n` +
+                    `🌿 Branch: ${branch}\n` +
                     `🎫 Jira Ticket: ${jiraIssue.key}\n` +
                     `📋 Title: ${jiraIssue.fields.summary}\n` +
                     `📅 Release: ${release}\n` +
@@ -673,6 +741,7 @@ class JavaDocumentationMCPServer {
             {
               type: 'text',
               text: `⚠️  Release note generated with limited info (Jira fetch failed)\n\n` +
+                    `🌿 Branch: ${branch}\n` +
                     `🎫 Ticket: ${commitInfo.ticketNumber}\n` +
                     `📝 Commit: ${commitInfo.message}\n` +
                     `📅 Release: ${release}\n` +
@@ -1463,103 +1532,101 @@ Make it suitable for developers to understand the detailed implementation design
     }
   }
 
-  private async generateOpenApiSpecification(classesSummary: ClassSummary[], outputFormat: string): Promise<string> {
-    this.logInfo(`Generating OpenAPI Specification using OpenAI model: ${this.config.openaiModel}`);
+  private async generateOpenApiSpecification(
+  classesSummary: ClassSummary[],
+  outputFormat: string
+): Promise<string> {
+  this.logInfo(`Generating OpenAPI Specification using OpenAI model: ${this.config.openaiModel}`);
 
-    if (!this.config.openaiApiKey) {
-      throw new Error('OpenAI API key is not configured. Set OPENAI_API_KEY environment variable.');
-    }
+  if (!this.config.openaiApiKey) {
+    throw new Error('OpenAI API key is not configured. Set OPENAI_API_KEY environment variable.');
+  }
 
-    // Extract REST controllers and their endpoints
-    const restControllers = classesSummary.filter(cls => cls.isRestController);
-    
-    const prompt = `You are given a list of Java classes extracted from a Spring Boot application, particularly REST controllers and their metadata. Based on this, generate a production-ready OpenAPI 3.0 specification in YAML format.
+  // 1. Identify serviceName from SpringBootApplication class
+  const mainAppClass = classesSummary.find(cls =>
+    cls.annotations?.includes("SpringBootApplication")
+  );
+  if (!mainAppClass) {
+    throw new Error("Could not determine service name — no class with @SpringBootApplication found.");
+  }
+
+  // Strip "Application" suffix for a cleaner service name
+  const rawServiceName = mainAppClass.className.replace(/Application$/, "");
+  const serviceName = rawServiceName.charAt(0).toLowerCase() + rawServiceName.slice(1);
+
+  // 2. Auto-generate a simple description
+  const serviceDescription = `The ${rawServiceName} service provides API operations for managing ${rawServiceName.toLowerCase()} domain resources.`;
+
+  // 3. Extract REST controllers for context
+  const restControllers = classesSummary.filter(cls => cls.isRestController);
+
+  // 4. Prepare the OpenAPI generation prompt
+  const prompt = `You are given a list of Java classes extracted from a Spring Boot application, particularly REST controllers and their metadata. Based on this, generate a **production-ready OpenAPI 3.0 specification** in pure YAML format.
 
 ## Requirements:
-
-1. **Overview Section**
-   - API title and version
-   - Base path (e.g., /idp)
-   - Authentication method used (e.g., JWT Bearer token if present)
-   - General usage guidance
-
-2. **OpenAPI Specification**
-   - For each REST controller:
-     - Extract and document all HTTP endpoints from the methods
-     - Use class names and method names to infer logical groupings and operation summaries
-     - If annotations like '@RequestMapping', '@GetMapping', '@PostMapping' are present, derive the full endpoint paths and HTTP methods
-   - Define request and response bodies using 'schemas'
-     - Infer schema names from method parameters (e.g., 'Users')
-     - Include example payloads when possible
-   - Include response status codes (e.g., 200 for success, 401 for unauthorized, etc.)
-   - Document possible error responses
-
-3. **Security**
-   - If a JWTService is used, include a JWT-based security scheme
-
-4. **Additional Docs**
-   - For each endpoint, add a usage description inferred from method name and parameters
-   - Add curl examples for major operations
-   - Document possible error codes (e.g., 401, 400)
-
-5. **Donts**
-   - please exclude and Do not put the header disclaimer which starts Below is the OpenAPI 3.0 specification
-   - Do not include any explanations, summaries, or additional commentary such as "This YAML is structured to be..." Only output the pure OpenAPI YAML content.
----
+- Only output valid OpenAPI YAML — no explanations or text outside YAML.
+- Must be validatable in Swagger Editor.
+- Include API title, version, base path, tags, paths, request/response schemas, and security (JWT if applicable).
+- Group endpoints by tags based on controller domains.
+- Include examples where possible.
+- Provide \`components.schemas\` for DTOs/entities referenced.
 
 Here are the REST controller classes:
-
 \`\`\`json
 ${JSON.stringify(restControllers, null, 2)}
 \`\`\`
 
-Here is the full list of all classes (for context, including DTOs/entities):
-
+Here is the full list of all classes (for context):
 \`\`\`json
 ${JSON.stringify(classesSummary, null, 2)}
 \`\`\`
 
----
-
-Generate the OpenAPI spec in YAML format. The output must be:
-- Complete
-- Validatable in Swagger Editor
-- Ready to be used in API Gateway or Postman collections
-- Human-readable with proper indentation and grouping
-- Organized by tags (based on controller names or logical domains)
-- Include JSON schema definitions under \`components.schemas\`
+Output ONLY the OpenAPI YAML, no extra commentary.
 `;
 
-    try {
-      const response = await this.openai.chat.completions.create({
-        model: this.config.openaiModel,
-        messages: [
-          {
-            role: 'system',
-            content: `You are an expert API documentation specialist. Generate comprehensive OpenAPI 3.0 specifications in ${outputFormat} format with complete YAML specifications and documentation.`,
-          },
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-        max_tokens: 4000,
-        temperature: 0.3,
-      });
+  try {
+    const response = await this.openai.chat.completions.create({
+      model: this.config.openaiModel,
+      messages: [
+        {
+          role: 'system',
+          content: `You are an expert API documentation specialist. Output only valid OpenAPI 3.0 YAML, nothing else.`,
+        },
+        { role: 'user', content: prompt },
+      ],
+      max_tokens: 4000,
+      temperature: 0.3,
+    });
 
-      const generatedContent = response.choices[0]?.message?.content;
-      if (!generatedContent) {
-        throw new Error('OpenAI returned empty response');
-      }
-
-      this.logInfo(`Successfully generated ${generatedContent.length} characters of OpenAPI specification documentation`);
-      return generatedContent;
-
-    } catch (error) {
-      this.logError('OpenAI API call failed for OpenAPI specification', error);
-      throw new Error(`Failed to generate OpenAPI specification: ${error instanceof Error ? error.message : String(error)}`);
+    const yamlContent = response.choices[0]?.message?.content?.trim();
+    if (!yamlContent) {
+      throw new Error('OpenAI returned empty response');
     }
+
+    // 5. Wrap in AsciiDoc for Confluence rendering
+    const adocContent = `== Interface Concept
+[id='${serviceName}']
+${serviceDescription}
+
+=== ${serviceName}-external-api
+
+NOTE: A source block marked with class openapi will be wrapped in an OpenAPI Documentation Macro. (see https://marketplace.atlassian.com/apps/1215176/open-api-documentation-for-confluence?hosting=cloud&tab=overview[Open API Documentation for Confluence])!
+
+[source,openapi]
+----
+${yamlContent}
+----
+`;
+
+    this.logInfo(`Successfully generated ${yamlContent.length} characters of OpenAPI YAML for ${serviceName}`);
+    return adocContent;
+
+  } catch (error) {
+    this.logError('OpenAI API call failed for OpenAPI specification', error);
+    throw new Error(`Failed to generate OpenAPI specification: ${error instanceof Error ? error.message : String(error)}`);
   }
+}
+
 
   async run() {
     const transport = new StdioServerTransport();

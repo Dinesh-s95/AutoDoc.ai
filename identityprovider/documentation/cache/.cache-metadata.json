@@ -1,0 +1,26 @@
+{
+  "sourceHash": "415cc85690fd04e6f884c9643d94ab4a224479d4f96a845ed5bddd9323332655",
+  "lastUpdated": "2025-08-10T07:44:09.004Z",
+  "sourceFiles": [
+    "src/main/java/com/vm/identityprovider/IdentityproviderApplication.java",
+    "src/main/java/com/vm/identityprovider/config/JwtAuthFilter.java",
+    "src/main/java/com/vm/identityprovider/config/SecurityConfig.java",
+    "src/main/java/com/vm/identityprovider/controller/UserController.java",
+    "src/main/java/com/vm/identityprovider/dto/AuthRequest.java",
+    "src/main/java/com/vm/identityprovider/dto/AuthResponse.java",
+    "src/main/java/com/vm/identityprovider/dto/UserPrincipal.java",
+    "src/main/java/com/vm/identityprovider/entity/Client.java",
+    "src/main/java/com/vm/identityprovider/entity/Role.java",
+    "src/main/java/com/vm/identityprovider/entity/Token.java",
+    "src/main/java/com/vm/identityprovider/entity/Users.java",
+    "src/main/java/com/vm/identityprovider/repository/UserRepository.java",
+    "src/main/java/com/vm/identityprovider/service/AuditService.java",
+    "src/main/java/com/vm/identityprovider/service/EmailService.java",
+    "src/main/java/com/vm/identityprovider/service/JWTService.java",
+    "src/main/java/com/vm/identityprovider/service/NotificationService.java",
+    "src/main/java/com/vm/identityprovider/service/TokenBlacklistService.java",
+    "src/main/java/com/vm/identityprovider/service/UserService.java",
+    "src/test/java/com/vm/identityprovider/IdentityproviderApplicationTests.java"
+  ],
+  "classCount": 19
+}
