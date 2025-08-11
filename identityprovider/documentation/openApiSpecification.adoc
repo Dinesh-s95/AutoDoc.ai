@@ -23,54 +23,68 @@ paths:
       tags:
         - User Management
       summary: Register a new user
-      operationId: registerUser
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/Users'
-            examples:
-              user:
-                summary: Example user
-                value:
-                  username: "newuser"
-                  password: "password123"
-                  email: "newuser@example.com"
+            example:
+              username: johndoe
+              email: johndoe@example.com
+              password: password123
       responses:
         '200':
-          description: Successfully registered user
+          description: User registered successfully
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Users'
+              example:
+                id: 1
+                username: johndoe
+                email: johndoe@example.com
         '400':
-          description: Invalid input
+          description: Bad request
   /users/login:
     post:
       tags:
         - User Management
       summary: User login
-      operationId: login
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/Users'
-            examples:
-              user:
-                summary: Example user
-                value:
-                  username: "testuser"
-                  password: "password123"
+            example:
+              username: johndoe
+              password: password123
       responses:
         '200':
-          description: Successfully logged in
+          description: Login successful
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthResponse'
+              example:
+                token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        '401':
+          description: Unauthorized
+  /users/refreshtoken:
+    post:
+      tags:
+        - User Management
+      summary: Refresh authentication token
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+              example:
+                token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
         '401':
           description: Unauthorized
 components:
@@ -78,39 +92,29 @@ components:
     Users:
       type: object
       properties:
+        id:
+          type: integer
+          format: int64
         username:
           type: string
-          example: "john_doe"
-        password:
-          type: string
-          format: password
-          example: "s3cr3t"
         email:
           type: string
-          format: email
-          example: "john_doe@example.com"
+        password:
+          type: string
       required:
         - username
-        - password
         - email
+        - password
     AuthResponse:
       type: object
       properties:
         token:
           type: string
-          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
-        refreshToken:
-          type: string
-          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
-      required:
-        - token
-        - refreshToken
-security:
-  - bearerAuth: []
-components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+security:
+  - bearerAuth: []
 ----

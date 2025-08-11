@@ -6,7 +6,7 @@ The Enrollment service provides API operations for managing enrollment domain re
 
 NOTE: A source block marked with class openapi will be wrapped in an OpenAPI Documentation Macro. (see https://marketplace.atlassian.com/apps/1215176/open-api-documentation-for-confluence?hosting=cloud&tab=overview[Open API Documentation for Confluence])!
 
-[source,openapi]
+[source.openapi,yaml]
 ----
 openapi: 3.0.0
 info:
@@ -54,9 +54,6 @@ components:
           type: string
         vin:
           type: string
-      required:
-        - id
-        - username
     UserResponseDTO:
       type: object
       properties:
@@ -66,7 +63,4 @@ components:
           type: string
         vin:
           type: string
-      required:
-        - mobilityUserId
-        - username
 ----
