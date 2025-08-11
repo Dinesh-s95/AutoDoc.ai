@@ -26,7 +26,7 @@ const CONFIG = {
   
   // Project paths
   paths: {
-    microservicePath: '../identityprovider', // Path to your Java microservice
+    microservicePath: '../identityprovider', 
     outputPath: '../identityprovider/documentation', // Where to save generated documentation
     serverPath: path.join(__dirname, 'dist', 'mcp-server.js'), // Path to compiled MCP server
   },
