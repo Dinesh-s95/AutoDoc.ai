@@ -1,6 +1,6 @@
 = Detailed Design Documentation for Identity Provider Application
 
-This document provides a comprehensive detailed design analysis of the Identity Provider application, focusing on its architecture, components, and interactions. It includes class-by-class analysis, runtime view diagrams, entity relationship diagrams, and detailed component interactions.
+This document provides a comprehensive detailed design analysis of the Identity Provider application, focusing on its architecture, components, and interactions. It includes class-by-class analysis.
 
 == Class-by-Class Analysis
 
