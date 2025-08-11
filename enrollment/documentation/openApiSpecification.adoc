@@ -21,13 +21,16 @@ paths:
         - Enrollment
       summary: Nominate a primary user
       operationId: nominatePrimary
-      parameters:
-        - name: username
-          in: query
-          required: true
-          schema:
-            type: string
-          example: "john_doe"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UsernameRequest'
+            examples:
+              example1:
+                value:
+                  username: "john_doe"
       responses:
         '200':
           description: Successful operation
@@ -35,38 +38,43 @@ paths:
             text/plain:
               schema:
                 type: string
-              example: "Nomination successful"
+                example: "Nomination for primary user john_doe successful"
         '400':
           description: Bad request
-        '401':
-          description: Unauthorized
+  /enrollment/nominate-secondary:
+    post:
+      tags:
+        - Enrollment
+      summary: Nominate a secondary user
+      operationId: nominateSecondary
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UsernameRequest'
+            examples:
+              example1:
+                value:
+                  username: "jane_doe"
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "Nomination for secondary user jane_doe successful"
+        '400':
+          description: Bad request
 components:
   schemas:
-    Enrollment:
+    UsernameRequest:
       type: object
+      required:
+        - username
       properties:
-        id:
-          type: integer
-          format: int64
-        role:
-          type: string
         username:
           type: string
-        vin:
-          type: string
-      required:
-        - id
-        - username
-    UserResponseDTO:
-      type: object
-      properties:
-        mobilityUserId:
-          type: string
-        username:
-          type: string
-        vin:
-          type: string
-      required:
-        - mobilityUserId
-        - username
+          example: "john_doe"
 ----
