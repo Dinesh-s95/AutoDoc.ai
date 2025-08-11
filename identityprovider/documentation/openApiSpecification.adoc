@@ -6,7 +6,7 @@ The Identityprovider service provides API operations for managing identityprovid
 
 NOTE: A source block marked with class openapi will be wrapped in an OpenAPI Documentation Macro. (see https://marketplace.atlassian.com/apps/1215176/open-api-documentation-for-confluence?hosting=cloud&tab=overview[Open API Documentation for Confluence])!
 
-[source,openapi]
+[source.openapi,yaml]
 ----
 openapi: 3.0.0
 info:
@@ -14,12 +14,16 @@ info:
   version: 1.0.0
 servers:
   - url: /idp
+tags:
+  - name: User Management
+    description: Operations related to user management
 paths:
   /users/register:
     post:
       tags:
         - User Management
       summary: Register a new user
+      operationId: registerUser
       requestBody:
         required: true
         content:
@@ -27,13 +31,15 @@ paths:
             schema:
               $ref: '#/components/schemas/Users'
             examples:
-              example1:
+              user:
+                summary: Example user
                 value:
                   username: "newuser"
-                  password: "newpassword123"
+                  password: "password123"
+                  email: "newuser@example.com"
       responses:
         '200':
-          description: User registered successfully
+          description: Successfully registered user
           content:
             application/json:
               schema:
@@ -45,6 +51,7 @@ paths:
       tags:
         - User Management
       summary: User login
+      operationId: login
       requestBody:
         required: true
         content:
@@ -52,19 +59,20 @@ paths:
             schema:
               $ref: '#/components/schemas/Users'
             examples:
-              example1:
+              user:
+                summary: Example user
                 value:
-                  username: "user1"
-                  password: "password1"
+                  username: "testuser"
+                  password: "password123"
       responses:
         '200':
-          description: Login successful
+          description: Successfully logged in
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthResponse'
         '401':
-          description: Authentication failed
+          description: Unauthorized
 components:
   schemas:
     Users:
@@ -72,19 +80,37 @@ components:
       properties:
         username:
           type: string
+          example: "john_doe"
         password:
           type: string
+          format: password
+          example: "s3cr3t"
+        email:
+          type: string
+          format: email
+          example: "john_doe@example.com"
+      required:
+        - username
+        - password
+        - email
     AuthResponse:
       type: object
       properties:
         token:
           type: string
-          description: JWT token for authenticated user
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+        refreshToken:
+          type: string
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+      required:
+        - token
+        - refreshToken
+security:
+  - bearerAuth: []
+components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
-security:
-  - bearerAuth: []
 ----
