@@ -307,7 +307,7 @@ class MCPServerLauncher {
       // Create Jira link using the configured base URL
       const jiraLink = `${this.config.jira.baseUrl}/browse/${ticketId}`;
       adocContent += `
-|link:${jiraLink}[${ticketId}] |${description} |${quarter}`;
+|${jiraLink}[${ticketId}] |${description} |${quarter}`;
     }
 
     adocContent += '\n|===\n';
