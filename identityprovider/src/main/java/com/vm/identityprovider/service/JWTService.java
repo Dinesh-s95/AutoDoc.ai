@@ -48,7 +48,7 @@ public class JWTService {
                     .setSigningKey(secretKey).build().parseClaimsJws(token);
             return true;
         } catch (JwtException | IllegalArgumentException e){
-            invalidateToken(token)
+            invalidateToken(token);
             log.error("Token validation failed: {}", e.getMessage());
             return false;
         }

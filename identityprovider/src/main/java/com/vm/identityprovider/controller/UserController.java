@@ -1,6 +1,6 @@
 package com.vm.identityprovider.controller;
 
-import com.vm.identityprovider.entity.Users;
+import com.vm.identityprovider.entity.User;
 import com.vm.identityprovider.service.JWTService;
 import com.vm.identityprovider.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -27,15 +27,15 @@ public class UserController {
     private JWTService jwtService;
 
     @PostMapping("/register")
-    public Users registerUser(@RequestBody final Users user) {
+    public User registerUser(@RequestBody final User user) {
         return userService.register(user);
     }
 
     @PostMapping("/login")
-    public ResponseEntity<Object> login(@RequestBody final Users user) {
+    public ResponseEntity<Object> login(@RequestBody final User user) {
 
         final Authentication authentication = authManager.authenticate(
-                new UsernamePasswordAuthenticationToken(user.getUsername(), user.getPassword()));
+                new UsernamePasswordAuthenticationToken(user.getUsername(), user.getPasswordHash()));
 
         if (authentication.isAuthenticated()) {
             final String token = jwtService.generateToken(user.getUsername());

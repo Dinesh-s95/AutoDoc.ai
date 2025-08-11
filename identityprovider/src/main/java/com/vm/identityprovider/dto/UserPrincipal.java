@@ -1,6 +1,6 @@
 package com.vm.identityprovider.dto;
 
-import com.vm.identityprovider.entity.Users;
+import com.vm.identityprovider.entity.User;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -10,9 +10,9 @@ import java.util.Collections;
 
 public class UserPrincipal implements UserDetails {
 
-    private final Users user;
+    private final User user;
 
-    public UserPrincipal(final Users user){
+    public UserPrincipal(final User user){
         this.user = user;
     }
 
@@ -23,7 +23,7 @@ public class UserPrincipal implements UserDetails {
 
     @Override
     public String getPassword() {
-        return user.getPassword();
+        return user.getPasswordHash();
     }
 
     @Override

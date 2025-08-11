@@ -1,7 +1,7 @@
 package com.vm.identityprovider.service;
 
 import com.vm.identityprovider.dto.UserPrincipal;
-import com.vm.identityprovider.entity.Users;
+import com.vm.identityprovider.entity.User;
 import com.vm.identityprovider.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -25,15 +25,15 @@ public class UserService implements UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(final String username) throws UsernameNotFoundException {
 
-        final Users user = userRepository.findByUsername(username);
+        final User user = userRepository.findByUsername(username);
         if (user == null) {
             throw new UsernameNotFoundException("User not found");
         }
         return new UserPrincipal(user);
     }
 
-    public Users register(final Users user){
-        user.setPassword(encoder.encode(user.getPassword()));
+    public User register(final User user){
+        user.setPasswordHash(encoder.encode(user.getPasswordHash()));
         userRepository.save(user);
         emailService.sendWelcomeEmail(user.getEmail());
         auditService.logEvent("User registered: " + user.getUsername());
