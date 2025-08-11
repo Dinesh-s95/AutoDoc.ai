@@ -29,4 +29,18 @@ public class EnrollmentService {
             throw new RuntimeException("User is not associated with any vehicle");
         }
     }
+
+    public String nominateSecondaryUser(String username) {
+        UserResponseDTO user = userClient.getUser(username);
+        if (user.getVin() != null) {
+            Enrollment enrollment = new Enrollment();
+            enrollment.setUsername(username);
+            enrollment.setVin(user.getVin());
+            enrollment.setRole("SECONDARY_USER");
+            repo.save(enrollment);
+            return "User nominated as SECONDARY_USER";
+        } else {
+            throw new RuntimeException("User is not associated with any vehicle");
+        }
+    }
 }
