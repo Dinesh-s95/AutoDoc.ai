@@ -15,4 +15,10 @@ public class EnrollmentController {
     public String nominatePrimary(@RequestParam String username) {
         return service.nominatePrimaryUser(username);
     }
+
+    @PostMapping("/nominate-primary")
+    public String nominateSecondaryUser(@RequestParam String username) {
+        return service.nominatePrimaryUser(username);
+    }
+
 }
