@@ -14,16 +14,12 @@ info:
   version: 1.0.0
 servers:
   - url: /idp
-tags:
-  - name: User Management
-    description: Operations related to user management
 paths:
   /users/register:
     post:
       tags:
-        - User Management
+        - User
       summary: Register a new user
-      operationId: registerUser
       requestBody:
         required: true
         content:
@@ -39,19 +35,16 @@ paths:
                   email: "newuser@example.com"
       responses:
         '200':
-          description: Successfully registered user
+          description: User registered successfully
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Users'
-        '400':
-          description: Invalid input
   /users/login:
     post:
       tags:
-        - User Management
+        - User
       summary: User login
-      operationId: login
       requestBody:
         required: true
         content:
@@ -60,19 +53,25 @@ paths:
               $ref: '#/components/schemas/Users'
             examples:
               user:
-                summary: Example user
+                summary: Example login
                 value:
-                  username: "testuser"
+                  username: "user1"
                   password: "password123"
       responses:
         '200':
-          description: Successfully logged in
+          description: Login successful
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthResponse'
-        '401':
-          description: Unauthorized
+  /users/refreshtoken:
+    post:
+      tags:
+        - User
+      summary: Refresh authentication token
+      responses:
+        '204':
+          description: Token refreshed successfully
 components:
   schemas:
     Users:
@@ -80,15 +79,10 @@ components:
       properties:
         username:
           type: string
-          example: "john_doe"
         password:
           type: string
-          format: password
-          example: "s3cr3t"
         email:
           type: string
-          format: email
-          example: "john_doe@example.com"
       required:
         - username
         - password
@@ -102,15 +96,11 @@ components:
         refreshToken:
           type: string
           example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
-      required:
-        - token
-        - refreshToken
-security:
-  - bearerAuth: []
-components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
+security:
+  - bearerAuth: []
 ----
