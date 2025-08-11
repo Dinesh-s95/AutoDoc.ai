@@ -9,6 +9,5 @@
 |===
 |Ticket |Description |Release
 
-- https://sharan99r.atlassian.net/browse/KAN-1[KAN-1] |Audi RLU feature |2025.3
-- https://sharan99r.atlassian.net/browse/KAN-3[KAN-3] |Vehicle Mgmt: Adapt SOP for 2025 vehicles |2025.3
+|- https://sharan99r.atlassian.net/browse/KAN-1[KAN-1] |Audi RLU feature |2025.3
 |===
