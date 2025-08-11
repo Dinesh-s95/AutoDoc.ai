@@ -35,11 +35,13 @@ paths:
             text/plain:
               schema:
                 type: string
-              example: "Nomination successful"
+                example: "Nomination successful"
         '400':
           description: Bad request
         '401':
           description: Unauthorized
+        '500':
+          description: Internal Server Error
 components:
   schemas:
     Enrollment:
