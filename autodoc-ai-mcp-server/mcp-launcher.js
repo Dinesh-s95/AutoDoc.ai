@@ -26,7 +26,7 @@ const CONFIG = {
   
   // Project paths
   paths: {
-    microservicePath: '../identityprovider', // Path to your Java microservice
+    microservicePath: '../identityprovider', 
     outputPath: '../identityprovider/documentation', // Where to save generated documentation
     serverPath: path.join(__dirname, 'dist', 'mcp-server.js'), // Path to compiled MCP server
   },
@@ -307,7 +307,7 @@ class MCPServerLauncher {
       // Create Jira link using the configured base URL
       const jiraLink = `${this.config.jira.baseUrl}/browse/${ticketId}`;
       adocContent += `
-|link:${jiraLink}[${ticketId}] |${description} |${quarter}`;
+- ${jiraLink}[${ticketId}] |${description} |${quarter}`;
     }
 
     adocContent += '\n|===\n';
