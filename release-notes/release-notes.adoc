@@ -9,5 +9,6 @@
 |===
 |Ticket |Description |Release
 
+|link:https://sharan99r.atlassian.net/browse/KAN-2[KAN-2] |Enroll: VW PU nomination feature |2025.3
 |link:https://sharan99r.atlassian.net/browse/KAN-3[KAN-3] |Vehicle Mgmt: Adapt SOP for 2025 vehicles |2025.3
 |===
