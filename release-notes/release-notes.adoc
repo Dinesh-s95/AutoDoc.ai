@@ -1,0 +1,13 @@
+= Release Notes Summary
+:toc: left
+:toclevels: 3
+:icons: font
+
+== Current Release Notes
+
+[cols="2,3,1", options="header"]
+|===
+|Ticket |Description |Release
+
+|https://sharan99r.atlassian.net/browse/KAN-2[KAN-2] |Enroll: VW PU nomination feature |2025.3
+|===
