@@ -2,7 +2,7 @@
 
 == 1. Service Architecture Overview
 
-The Identity Provider (IdP) service is designed as a microservice using Spring Boot, focusing on user authentication and authorization. The system allows for user registration, login, and token management.
+The Identity Provider (IdP) service is designed as a microservice using Spring Boot, focusing on user authentication and authorization.
 
 === High-level System Architecture Diagram
 
