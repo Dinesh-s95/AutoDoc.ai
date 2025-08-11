@@ -17,9 +17,9 @@ servers:
 paths:
   /enrollment/nominate-primary:
     post:
+      summary: Nominate a primary user
       tags:
         - Enrollment
-      summary: Nominate a primary user
       operationId: nominatePrimary
       parameters:
         - name: username
@@ -35,11 +35,9 @@ paths:
             text/plain:
               schema:
                 type: string
-              example: "Nomination successful"
+              example: "User nominated as primary successfully"
         '400':
           description: Bad request
-        '401':
-          description: Unauthorized
 components:
   schemas:
     Enrollment:
@@ -48,25 +46,29 @@ components:
         id:
           type: integer
           format: int64
+          example: 1
         role:
           type: string
+          example: "Primary"
         username:
           type: string
+          example: "john_doe"
         vin:
           type: string
-      required:
-        - id
-        - username
+          example: "1HGBH41JXMN109186"
     UserResponseDTO:
       type: object
       properties:
         mobilityUserId:
           type: string
+          example: "1001"
         username:
           type: string
+          example: "john_doe"
         vin:
           type: string
-      required:
-        - mobilityUserId
-        - username
+          example: "1HGBH41JXMN109186"
+tags:
+  - name: Enrollment
+    description: Operations related to user enrollments
 ----
