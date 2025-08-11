@@ -29,4 +29,7 @@ public class EnrollmentService {
             throw new RuntimeException("User is not associated with any vehicle");
         }
     }
+
+    //here
+
 }
