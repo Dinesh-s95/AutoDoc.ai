@@ -2,7 +2,7 @@
 
 == Introduction
 
-This document provides a detailed design description of the Identity Provider system implemented using Java Spring Boot. It covers class-by-class analysis, runtime view diagrams, entity relationship diagrams, and detailed component interactions.
+This document provides a detailed design description of the Identity Provider system implemented using Java Spring Boot. It covers class-by-class analysis, runtime view diagrams, entity relationship diagrams.
 
 == Class-by-Class Analysis
 
