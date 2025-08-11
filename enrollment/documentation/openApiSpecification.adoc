@@ -35,11 +35,28 @@ paths:
             text/plain:
               schema:
                 type: string
-              example: "Nomination successful"
-        '400':
-          description: Bad request
-        '401':
-          description: Unauthorized
+              example: "Primary user nominated successfully"
+  /enrollment/nominate-secondary:
+    post:
+      tags:
+        - Enrollment
+      summary: Nominate a secondary user
+      operationId: nominateSecondaryUser
+      parameters:
+        - name: username
+          in: query
+          required: true
+          schema:
+            type: string
+          example: "jane_doe"
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            text/plain:
+              schema:
+                type: string
+              example: "Secondary user nominated successfully"
 components:
   schemas:
     Enrollment:
@@ -48,25 +65,26 @@ components:
         id:
           type: integer
           format: int64
+          example: 1
         role:
           type: string
+          example: "Primary"
         username:
           type: string
+          example: "john_doe"
         vin:
           type: string
-      required:
-        - id
-        - username
+          example: "1HGCM82633A004352"
     UserResponseDTO:
       type: object
       properties:
         mobilityUserId:
           type: string
+          example: "1001"
         username:
           type: string
+          example: "john_doe"
         vin:
           type: string
-      required:
-        - mobilityUserId
-        - username
+          example: "1HGCM82633A004352"
 ----
