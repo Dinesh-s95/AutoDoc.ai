@@ -17,8 +17,6 @@ public class EnrollmentApplication {
 }
 ----
 
-*Purpose:* This is the main entry point for the Spring Boot application. It initializes the Spring context and all the Spring Boot components.
-
 *Annotations:*
 - `@EnableFeignClients`: Enables the discovery of interfaces that can be used to make REST calls via Feign.
 - `@SpringBootApplication`: Indicates a configuration class that declares one or more `@Bean` methods and also triggers auto-configuration and component scanning.
