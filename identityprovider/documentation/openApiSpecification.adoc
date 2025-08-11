@@ -27,8 +27,7 @@ paths:
             schema:
               $ref: '#/components/schemas/Users'
             examples:
-              user:
-                summary: Example user
+              example1:
                 value:
                   username: "newuser"
                   password: "password123"
@@ -52,8 +51,7 @@ paths:
             schema:
               $ref: '#/components/schemas/Users'
             examples:
-              user:
-                summary: Example login
+              example1:
                 value:
                   username: "user1"
                   password: "password123"
@@ -69,6 +67,12 @@ paths:
       tags:
         - User
       summary: Refresh authentication token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Users'
       responses:
         '204':
           description: Token refreshed successfully
@@ -90,12 +94,13 @@ components:
     AuthResponse:
       type: object
       properties:
-        token:
+        accessToken:
           type: string
-          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
         refreshToken:
           type: string
-          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
+      required:
+        - accessToken
+        - refreshToken
   securitySchemes:
     bearerAuth:
       type: http

@@ -1,143 +1,142 @@
-= Identity Provider Service Architecture Documentation
+= Identity Provider Service Architecture Design
+
+This document provides a comprehensive architecture design for the Identity Provider Service, detailing the service architecture, component descriptions, infrastructure architecture, and system context.
 
 == 1. Service Architecture Overview
 
-The Identity Provider (IdP) service is designed as a microservice using Spring Boot, focusing on user authentication and authorization.
-
 === High-level System Architecture Diagram
 
-[plantuml, diagram-arch, png]
-....
+[plantuml, diagram-architecture, png]
+----
 @startuml
-!define SPRING #SpringGreen
-!define ENTITY #FFDAC1
-!define SERVICE #B0E0E6
-!define CONTROLLER #ADD8E6
+package "Spring Boot Application" {
+  [IdentityproviderApplication] as App
+  [SecurityConfig] as SecConf
+  [UserController] as UserCtrl
+  [JwtAuthFilter] as JwtFilter
+  [UserService] as UserSvc
+  [JWTService] as JwtSvc
+  [EmailService] as EmailSvc
+  [AuditService] as AuditSvc
+  [TokenBlacklistService] as TokenBlkSvc
+  [NotificationService] as NotifSvc
+  [UserRepository] as UserRepo
 
-package "Identity Provider Service" {
-  [IdentityproviderApplication] << SPRING >>
-
-  package "Controllers" {
-    [UserController] << CONTROLLER >>
-  }
-
-  package "Services" {
-    [UserService] << SERVICE >>
-    [JWTService] << SERVICE >>
-    [AuditService] << SERVICE >>
-    [EmailService] << SERVICE >>
-    [TokenBlacklistService] << SERVICE >>
-    [NotificationService] << SERVICE >>
-  }
-
-  package "Security" {
-    [JwtAuthFilter] << SPRING >>
-    [SecurityConfig] << SPRING >>
-  }
-
-  package "Persistence" {
-    [UserRepository] << SPRING >>
-    [Client] << ENTITY >>
-    [Role] << ENTITY >>
-    [Token] << ENTITY >>
-    [User] << ENTITY >>
-  }
-
-  [UserController] --> [UserService]
-  [UserService] --> [UserRepository]
-  [UserService] --> [AuditService]
-  [UserService] --> [EmailService]
-  [JWTService] --> [AuditService]
-  [JWTService] --> [TokenBlacklistService]
-  [EmailService] --> [NotificationService]
-  [JwtAuthFilter] --> [UserService]
-  [SecurityConfig] --> [JwtAuthFilter]
+  App --> SecConf
+  SecConf --> JwtFilter
+  UserCtrl --> JwtSvc
+  UserCtrl --> UserSvc
+  JwtFilter --> UserSvc
+  UserSvc --> UserRepo
+  UserSvc --> AuditSvc
+  UserSvc --> EmailSvc
+  JwtSvc --> AuditSvc
+  JwtSvc --> TokenBlkSvc
+  EmailSvc --> NotifSvc
 }
 
+database "Database" {
+  [User]
+  [Role]
+  [Token]
+  [Client]
+}
+
+UserRepo ..> Database
 @enduml
-....
+----
 
 === External System Connections and Integrations
 
-The Identity Provider service integrates with external systems such as email servers and potentially other microservices for notifications and auditing.
+The Identity Provider Service integrates with the following external systems:
+
+- **Email System**: For sending notifications and welcome emails.
+- **Notification Service**: For general user notifications.
 
 === Component Interaction Overview
 
-The system is structured around the core Spring Boot application (`IdentityproviderApplication`) which orchestrates various components:
-
-- **Controllers** handle HTTP requests and delegate business logic to services.
-- **Services** manage business logic, data validation, and persistence interactions.
-- **Security Components** ensure secure communication and user authentication.
-- **Persistence Layer** interacts with the database to store and retrieve user data.
+The components interact primarily through service invocations facilitated by Spring's dependency injection. `UserController` handles HTTP requests and interacts with `UserService` for user-related operations. `UserService` uses `UserRepository` to interact with the database. Security is managed by `SecurityConfig`, which integrates `JwtAuthFilter` for JWT-based authentication.
 
 === Technology Stack and Frameworks Used
 
 - **Spring Boot**: Framework for creating stand-alone, production-grade Spring based applications.
 - **Spring Security**: For authentication and authorization.
-- **JWT (JSON Web Tokens)**: For secure transmission of information between parties.
-- **Hibernate**: For ORM and database interaction.
+- **JWT**: For secure transmission of information between parties as a JSON object.
+- **Hibernate**: For ORM-based database operations.
 - **MySQL**: As the relational database.
+- **Maven**: For project management and build.
 - **JUnit**: For unit testing.
 
 == 2. Component Description
 
 === IdentityproviderApplication
 
-The entry point of the Spring Boot application, responsible for bootstrapping and launching the application.
+- **Responsibility**: Bootstraps the Spring Boot application.
+- **Role**: Entry point of the application.
+- **Interaction**: Initializes Spring context and configurations.
 
-=== UserController
+=== JwtAuthFilter
 
-Handles all user-related HTTP requests such as login, registration, and token refresh. It interacts with `UserService` for executing business logic.
-
-=== UserService
-
-Manages all user operations including loading user details, registration, and interaction with `UserRepository` for database operations. It uses `AuditService` to log events and `EmailService` for sending notifications.
-
-=== JWTService
-
-Responsible for handling all operations related to JWT including token generation, extraction, validation, and invalidation. It interacts with `AuditService` for logging and `TokenBlacklistService` for managing blacklisted tokens.
+- **Responsibility**: To intercept requests and perform JWT validation.
+- **Role**: Security filter to enforce authentication.
+- **Interaction**: Uses `UserService` to load user details during authentication.
 
 === SecurityConfig
 
-Configures security aspects of the application, such as authentication manager, security filters, and password encoding.
+- **Responsibility**: Configuration for security aspects of the application.
+- **Role**: Defines beans for authentication and authorization processes.
+- **Interaction**: Configures `JwtAuthFilter` and `UserDetailsService`.
 
-=== UserRepository, Client, Role, Token, User
+=== UserController
 
-These components manage the persistence of user and authentication data. `UserRepository` is a Spring Data repository that abstracts the database interactions.
+- **Responsibility**: Handle all user-related HTTP requests.
+- **Role**: Controller to manage registration, login, and token refresh.
+- **Interaction**: Interacts with `AuthenticationManager`, `JWTService`, and `UserService`.
+
+=== UserService
+
+- **Responsibility**: Business logic for user management.
+- **Role**: Service layer to handle user data operations.
+- **Interaction**: Uses `UserRepository` for database operations and `AuditService`, `EmailService` for auxiliary functions.
+
+=== JWTService
+
+- **Responsibility**: Handling of JWT creation, extraction, and validation.
+- **Role**: Service to manage JWT tokens.
+- **Interaction**: Interacts with `AuditService` and `TokenBlacklistService` for logging and token invalidation.
 
 == 3. Infrastructure Architecture
 
 === Deployment Architecture
 
-The application is containerized using Docker, allowing it to be deployed on any Docker-compatible environment, including Kubernetes clusters for better scalability and management.
+The application is containerized using Docker, allowing it to be deployed on any Docker-compatible environment, including Kubernetes for orchestration.
 
 === Database Architecture
 
-MySQL is used as the database, with entities such as `User`, `Role`, `Token`, and `Client` mapped via Hibernate ORM. The database schema is managed through Liquibase for version control and migrations.
+The application uses MySQL as a relational database with tables for `Users`, `Roles`, `Tokens`, and `Clients`. Hibernate ORM is used for database interaction.
 
 === Security Architecture
 
-Spring Security is utilized to handle authentication and authorization. Passwords are stored in hashed formats using BCrypt. HTTPS is enforced for all communications.
+Security is managed using Spring Security with JWT for stateless authentication. HTTPS is used for secure communication.
 
 === Network Architecture
 
-The service is designed to be deployed within a private subnet with controlled access via API Gateway, ensuring that only authenticated requests reach the service.
+The application is deployed within a private subnet with controlled access via load balancers. Only HTTPS traffic is permitted to the services.
 
 == 4. System Context
 
 === External Systems and Their Interfaces
 
-The system interacts with:
-- Email servers for sending notifications.
-- Other microservices for distributed functionalities like notification services.
+- **Email System**: Interface via SMTP for sending emails.
+- **Notification Service**: REST API for sending notifications.
 
 === Data Flow Between Systems
 
-1. User sends login request.
-2. `UserController` captures request and interacts with `UserService`.
-3. `UserService` validates credentials and requests `JWTService` to create tokens.
-4. Tokens are sent back to the user.
+1. User data flows from `UserController` to `UserService` and then to `UserRepository`.
+2. Authentication data flows from `UserController` to `JWTService` for token generation and validation.
 
 === Authentication and Authorization Flows at System Level
 
-Authentication is managed via JWT tokens generated by `JWTService`. Authorization is enforced by Spring Security based on roles and permissions associated with the JWT.
+Authentication is performed via JWT tokens. `JwtAuthFilter` intercepts HTTP requests to validate tokens. `SecurityConfig` configures all security-related aspects, including the authentication manager and security filters.
+
+This architecture document provides a detailed overview of the Identity Provider Service, ensuring clarity for architects and senior developers regarding the system design and operations.
