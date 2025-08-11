@@ -5,7 +5,11 @@ import com.vm.enrollment.dto.UserResponseDTO;
 import com.vm.enrollment.entity.Enrollment;
 import com.vm.enrollment.repository.EnrollmentRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.web.bind.annotation.PostMapping;
+
+import java.util.Map;
 
 @Service
 public class EnrollmentService {
@@ -29,4 +33,5 @@ public class EnrollmentService {
             throw new RuntimeException("User is not associated with any vehicle");
         }
     }
+
 }
