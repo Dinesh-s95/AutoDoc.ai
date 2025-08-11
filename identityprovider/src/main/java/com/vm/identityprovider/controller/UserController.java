@@ -43,4 +43,9 @@ public class UserController {
         }
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid username or password"));
     }
+
+    @PostMapping("/refreshtoken")
+    public ResponseEntity<Object> refreshToken() {
+        return ResponseEntity.ok().body(Map.of("message", "Refresh token endpoint - logic not implemented yet"));
+    }
 }
