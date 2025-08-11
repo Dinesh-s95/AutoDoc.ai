@@ -1618,7 +1618,7 @@ ${serviceDescription}
 
 NOTE: A source block marked with class openapi will be wrapped in an OpenAPI Documentation Macro. (see https://marketplace.atlassian.com/apps/1215176/open-api-documentation-for-confluence?hosting=cloud&tab=overview[Open API Documentation for Confluence])!
 
-[source,openapi]
+[source.openapi,yaml]
 ----
 ${yamlContent}
 ----
