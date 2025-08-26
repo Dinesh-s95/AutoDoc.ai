@@ -153,4 +153,3 @@ User credentials and tokens are exchanged between the client applications and th
 
 Authentication is performed using username and password, followed by JWT token issuance. Authorization is managed via roles and permissions encoded within the JWT.
 
-This architecture document provides a comprehensive overview of the Identity Provider system, designed for scalability, security, and efficiency.
