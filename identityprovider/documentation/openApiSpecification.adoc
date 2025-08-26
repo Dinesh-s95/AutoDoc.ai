@@ -18,54 +18,63 @@ paths:
   /users/register:
     post:
       tags:
-        - User
+        - User Management
       summary: Register a new user
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Users'
+              $ref: '#/components/schemas/User'
             examples:
-              example1:
+              user:
+                summary: Example user
                 value:
                   username: "newuser"
-                  password: "password123"
                   email: "newuser@example.com"
+                  passwordHash: "hashedpassword"
       responses:
         '200':
           description: User registered successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Users'
+                $ref: '#/components/schemas/User'
+        '400':
+          description: Invalid input
   /users/login:
     post:
       tags:
-        - User
+        - User Management
       summary: User login
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/Users'
+              $ref: '#/components/schemas/User'
             examples:
-              example1:
+              user:
+                summary: Example login
                 value:
                   username: "user1"
-                  password: "password123"
+                  passwordHash: "hashedpassword"
       responses:
         '200':
           description: Login successful
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthResponse'
+                type: object
+                properties:
+                  token:
+                    type: string
+        '401':
+          description: Unauthorized
   /users/refreshtoken:
     post:
       tags:
-        - User
+        - User Management
       summary: Refresh authentication token
       requestBody:
         required: true
@@ -73,34 +82,61 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/Users'
+            examples:
+              user:
+                summary: Example refresh token request
+                value:
+                  username: "user1"
       responses:
         '204':
           description: Token refreshed successfully
+        '401':
+          description: Unauthorized
 components:
   schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        username:
+          type: string
+          example: "user1"
+        email:
+          type: string
+          example: "user1@example.com"
+        passwordHash:
+          type: string
+          example: "hashedpassword"
+        roles:
+          type: array
+          items:
+            $ref: '#/components/schemas/Role'
+      required:
+        - username
+        - passwordHash
     Users:
       type: object
       properties:
         username:
           type: string
-        password:
-          type: string
-        email:
-          type: string
-      required:
-        - username
-        - password
-        - email
-    AuthResponse:
+          example: "user1"
+    Role:
       type: object
       properties:
-        accessToken:
+        id:
+          type: integer
+          format: int64
+          example: 1
+        name:
           type: string
-        refreshToken:
-          type: string
-      required:
-        - accessToken
-        - refreshToken
+          example: "Admin"
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
   securitySchemes:
     bearerAuth:
       type: http
