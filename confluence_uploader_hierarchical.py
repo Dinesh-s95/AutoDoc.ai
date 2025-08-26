@@ -15,7 +15,7 @@ import html
 CONFLUENCE_URL = os.getenv("CONFLUENCE_URL", "https://autodoc-ai.atlassian.net")
 CONFLUENCE_USER = os.getenv("CONFLUENCE_USER", "sharanr498@gmail.com")
 CONFLUENCE_API_TOKEN = os.getenv("CONFLUENCE_API_TOKEN")
-SPACE_KEY = os.getenv("SPACE_KEY")
+SPACE_KEY = os.getenv("SPACE_KEY", "XFLOW")
 
 # Microservices to scan for documentation
 MICROSERVICES = [
