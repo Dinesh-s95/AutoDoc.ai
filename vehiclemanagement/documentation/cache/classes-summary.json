@@ -1,8 +1,16 @@
 [
   {
+    "className": "ServiceListCollection",
+    "annotations": [],
+    "methods": [],
+    "endpoints": [],
+    "fields": [],
+    "isEntity": false,
+    "isRestController": false
+  },
+  {
     "className": "Vehicle",
     "annotations": [
-      "Entity",
       "Id",
       "NotBlank",
       "NotNull",
@@ -31,7 +39,7 @@
       "sop : LocalDate",
       "vin : String"
     ],
-    "isEntity": true,
+    "isEntity": false,
     "isRestController": false
   },
   {
@@ -52,6 +60,7 @@
     "annotations": [
       "Autowired",
       "GetMapping",
+      "PathVariable",
       "PostMapping",
       "RequestBody",
       "RequestMapping",

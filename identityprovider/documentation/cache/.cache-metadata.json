@@ -1,6 +1,6 @@
 {
-  "sourceHash": "1a0194fb49e0922230b9a92d48ac159f55a3590593452fbdebc90e3d20477f03",
-  "lastUpdated": "2025-08-11T08:35:13.235Z",
+  "sourceHash": "63ade941b52c8a77d208534e17910394124a2256860c0f976798c813bff575a5",
+  "lastUpdated": "2025-08-26T03:55:53.990Z",
   "sourceFiles": [
     "src/main/java/com/vm/identityprovider/IdentityproviderApplication.java",
     "src/main/java/com/vm/identityprovider/config/JwtAuthFilter.java",
@@ -12,7 +12,7 @@
     "src/main/java/com/vm/identityprovider/entity/Client.java",
     "src/main/java/com/vm/identityprovider/entity/Role.java",
     "src/main/java/com/vm/identityprovider/entity/Token.java",
-    "src/main/java/com/vm/identityprovider/entity/Users.java",
+    "src/main/java/com/vm/identityprovider/entity/User.java",
     "src/main/java/com/vm/identityprovider/repository/UserRepository.java",
     "src/main/java/com/vm/identityprovider/service/AuditService.java",
     "src/main/java/com/vm/identityprovider/service/EmailService.java",
