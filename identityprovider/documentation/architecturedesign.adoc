@@ -126,5 +126,3 @@ The application is typically deployed within a private network with controlled a
 === Authentication and Authorization Flows at System Level
 
 Authentication is performed using JWT tokens. Users submit credentials via the `/login` endpoint, receive a token, and use this token for subsequent requests. Authorization is managed using Spring Security roles and permissions.
-
-This documentation provides a comprehensive overview of the Identity Provider Application's architecture, suitable for architects and senior developers to understand and extend the system.
