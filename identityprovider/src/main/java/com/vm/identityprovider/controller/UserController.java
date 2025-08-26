@@ -45,7 +45,7 @@ public class UserController {
     }
 
     @PostMapping("/refreshtoken")
-    public ResponseEntity<Void> refreshToken(@RequestBody Users user) {
+    public ResponseEntity<Object> refreshToken(@RequestBody User user) {
         return ResponseEntity.ok().build();
     }
 }
