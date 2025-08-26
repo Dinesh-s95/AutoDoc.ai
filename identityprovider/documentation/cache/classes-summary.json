@@ -62,7 +62,7 @@
     ],
     "methods": [
       "@PostMapping(\"/login\") public ResponseEntity<Object> login(@RequestBody final User user)",
-      "@PostMapping(\"/refreshtoken\") public ResponseEntity<Void> refreshToken(@RequestBody Users user)",
+      "@PostMapping(\"/refreshtoken\") public ResponseEntity<Object> refreshToken(@RequestBody User user)",
       "@PostMapping(\"/register\") public User registerUser(@RequestBody final User user)"
     ],
     "endpoints": [
@@ -94,16 +94,16 @@
       },
       {
         "annotation": "PostMapping",
-        "method": "@PostMapping(\"/refreshtoken\") public ResponseEntity<Void> refreshToken(@RequestBody Users user)",
+        "method": "@PostMapping(\"/refreshtoken\") public ResponseEntity<Object> refreshToken(@RequestBody User user)",
         "url": "/idp/users/refreshtoken",
         "inputs": [
           {
             "annotation": "RequestBody",
-            "type": "Users",
+            "type": "User",
             "name": "user"
           }
         ],
-        "output": "ResponseEntity<Void>"
+        "output": "ResponseEntity<Object>"
       }
     ],
     "fields": [
