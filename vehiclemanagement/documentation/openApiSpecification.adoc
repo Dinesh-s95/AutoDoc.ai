@@ -6,9 +6,8 @@ The Vehiclemanagement service provides API operations for managing vehiclemanage
 
 NOTE: A source block marked with class openapi will be wrapped in an OpenAPI Documentation Macro. (see https://marketplace.atlassian.com/apps/1215176/open-api-documentation-for-confluence?hosting=cloud&tab=overview[Open API Documentation for Confluence])!
 
-[source,openapi]
+[source.openapi,yaml]
 ----
-```yaml
 openapi: 3.0.0
 info:
   title: Vehicle Management API
@@ -29,21 +28,24 @@ paths:
               $ref: '#/components/schemas/Vehicle'
             examples:
               example1:
-                summary: Example Vehicle
                 value:
                   brand: Toyota
                   country: Japan
-                  device: Hybrid
-                  model: Prius
-                  sop: 2022-01-01
-                  vin: "JTDKBRFU8J3000001"
+                  device: Device123
+                  model: Camry
+                  sop: '2023-01-01'
+                  vin: VIN1234567890
       responses:
         '200':
           description: Vehicle registered successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Vehicle'
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Vehicle registered successfully
         '400':
           description: Invalid input
   /vehicle/verify:
@@ -72,7 +74,7 @@ paths:
           description: Country of registration
       responses:
         '200':
-          description: Vehicle is verified
+          description: Verification successful
           content:
             application/json:
               schema:
@@ -80,10 +82,9 @@ paths:
                 properties:
                   status:
                     type: string
-                    example: "Verified"
+                    example: Verified
         '404':
           description: Vehicle not found
-
 components:
   schemas:
     Vehicle:
@@ -91,23 +92,23 @@ components:
       properties:
         brand:
           type: string
-          example: "Toyota"
+          example: Toyota
         country:
           type: string
-          example: "Japan"
+          example: Japan
         device:
           type: string
-          example: "Hybrid"
+          example: Device123
         model:
           type: string
-          example: "Prius"
+          example: Camry
         sop:
           type: string
           format: date
-          example: "2022-01-01"
+          example: '2023-01-01'
         vin:
           type: string
-          example: "JTDKBRFU8J3000001"
+          example: VIN1234567890
       required:
         - brand
         - country
@@ -115,5 +116,4 @@ components:
         - model
         - sop
         - vin
-```
 ----

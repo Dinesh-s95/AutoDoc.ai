@@ -61,33 +61,33 @@
       "RestController"
     ],
     "methods": [
-      "@PostMapping(\"/login\") public ResponseEntity<Object> login(@RequestBody final Users user)",
+      "@PostMapping(\"/login\") public ResponseEntity<Object> login(@RequestBody final User user)",
       "@PostMapping(\"/refreshtoken\") public ResponseEntity<Void> refreshToken(@RequestBody Users user)",
-      "@PostMapping(\"/register\") public Users registerUser(@RequestBody final Users user)"
+      "@PostMapping(\"/register\") public User registerUser(@RequestBody final User user)"
     ],
     "endpoints": [
       {
         "annotation": "PostMapping",
-        "method": "@PostMapping(\"/register\") public Users registerUser(@RequestBody final Users user)",
+        "method": "@PostMapping(\"/register\") public User registerUser(@RequestBody final User user)",
         "url": "/idp/users/register",
         "inputs": [
           {
             "annotation": "RequestBody",
             "type": "final",
-            "name": "Users"
+            "name": "User"
           }
         ],
-        "output": "Users"
+        "output": "User"
       },
       {
         "annotation": "PostMapping",
-        "method": "@PostMapping(\"/login\") public ResponseEntity<Object> login(@RequestBody final Users user)",
+        "method": "@PostMapping(\"/login\") public ResponseEntity<Object> login(@RequestBody final User user)",
         "url": "/idp/users/login",
         "inputs": [
           {
             "annotation": "RequestBody",
             "type": "final",
-            "name": "Users"
+            "name": "User"
           }
         ],
         "output": "ResponseEntity<Object>"
@@ -153,7 +153,7 @@
     ],
     "endpoints": [],
     "fields": [
-      "user : final Users"
+      "user : final User"
     ],
     "isEntity": false,
     "isRestController": false
@@ -354,7 +354,7 @@
     ],
     "methods": [
       "@Override public UserDetails loadUserByUsername(final String username) throws UsernameNotFoundException",
-      "public Users register(final Users user)"
+      "public User register(final User user)"
     ],
     "endpoints": [],
     "fields": [
