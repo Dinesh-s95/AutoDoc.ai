@@ -68,7 +68,7 @@ jobs:
       - name: Upload documentation to Confluence
         if: steps.check-docs.outputs.has_docs == 'true'
         env:
-          CONFLUENCE_URL: "https://sharan99r.atlassian.net"
+          CONFLUENCE_URL: "https://autodoc-ai.atlassian.net"
           CONFLUENCE_USER: ${{ secrets.CONFLUENCE_USER }}
           CONFLUENCE_API_TOKEN: ${{ secrets.CONFLUENCE_API_TOKEN }}
           SPACE_KEY: ${{ secrets.SPACE_KEY }}
@@ -110,7 +110,7 @@ jobs:
               issue_number: ${{ github.event.pull_request.number }},
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '✅ Documentation has been successfully updated in Confluence using hierarchical structure!\n\n📚 **Updated Documentation:**\n- Parent Page: Identity Provider Documentation\n- Child Pages: Architecture Design, Detailed Design, OpenAPI Specification\n\n🔗 [View in Confluence](https://sharan99r.atlassian.net/wiki/spaces/~712020a1106f7965b7429fa169a05d4788f4d5)\n\n**PR Details:**\n- PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}\n- Author: ${{ github.event.pull_request.user.login }}\n- Merged: ' + new Date().toLocaleString()
+              body: '✅ Documentation has been successfully updated in Confluence using hierarchical structure!\n\n📚 **Updated Documentation:**\n- Parent Page: Identity Provider Documentation\n- Child Pages: Architecture Design, Detailed Design, OpenAPI Specification\n\n🔗 [View in Confluence](https://autodoc-ai.atlassian.net/wiki/spaces/~71202088ce4f945ae3406cb719d7bf9489818b)\n\n**PR Details:**\n- PR #${{ github.event.pull_request.number }}: ${{ github.event.pull_request.title }}\n- Author: ${{ github.event.pull_request.user.login }}\n- Merged: ' + new Date().toLocaleString()
             })
 
       - name: Post failure comment

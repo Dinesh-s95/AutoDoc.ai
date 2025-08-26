@@ -12,10 +12,10 @@ from pathlib import Path
 import html
 
 # Configuration
-CONFLUENCE_URL = os.getenv("CONFLUENCE_URL", "https://sharan99r.atlassian.net")
-CONFLUENCE_USER = os.getenv("CONFLUENCE_USER", "sharan99r@gmail.com")
-CONFLUENCE_API_TOKEN = os.getenv("CONFLUENCE_API_TOKEN","ATATT3xFfGF0N761KQfZ41aHMFCpDhOu922C04iqHBpNvi_DkfDX5QwStu7D6xXu4_ebLUwiNd0D6UnGZs1SNToUFD9M3V42-Iz6iLq_7QsH3f0xqL7Ii8KrGJ60c-s2BarVBHS8reYbwk585ja9H0S-TMx0hOkUfOA3_IVxq7cCJ57zWBqgwSY=6FF0EDE7")
-SPACE_KEY = os.getenv("SPACE_KEY", "~712020a1106f7965b7429fa169a05d4788f4d5")
+CONFLUENCE_URL = os.getenv("CONFLUENCE_URL", "https://autodoc-ai.atlassian.net")
+CONFLUENCE_USER = os.getenv("CONFLUENCE_USER", "sharanr498@gmail.com")
+CONFLUENCE_API_TOKEN = os.getenv("CONFLUENCE_API_TOKEN")
+SPACE_KEY = os.getenv("SPACE_KEY")
 
 # Microservices to scan for documentation
 MICROSERVICES = [

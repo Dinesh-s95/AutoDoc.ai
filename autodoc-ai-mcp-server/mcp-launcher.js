@@ -19,8 +19,8 @@ const CONFIG = {
   
   // Jira Configuration
   jira: {
-    baseUrl: 'https://sharan99r.atlassian.net',
-    email: 'sharan99r@gmail.com',
+    baseUrl: 'https://autodoc-ai.atlassian.net',
+    email: 'sharanr498@gmail.com',
     apiToken: process.env.CONFLUENCE_API_TOKEN
   },
   
