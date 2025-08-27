@@ -452,5 +452,3 @@ Token "1" -- "1" User : has >
 - Transactions are managed at the **Service** layer, ensuring that database operations are completed successfully before committing the transaction. If an exception occurs, the transaction is rolled back.
 
 == Conclusion
-
-This detailed design document provides a comprehensive overview of the Identity Provider application, including class descriptions, interactions, and processes. It serves as a guide for developers to understand and implement the system according to the specified design.
