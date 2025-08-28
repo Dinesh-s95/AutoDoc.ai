@@ -136,4 +136,3 @@ User data flows from the UserController to UserService and then to UserRepositor
 
 Authentication is performed using JWT tokens. When a user logs in, UserController interacts with UserService to validate credentials and JWTService to generate a token. This token is then used for subsequent requests to authenticate the user.
 
-This document provides a detailed architectural overview intended for architects and senior developers to understand and further develop the system.
