@@ -44,13 +44,4 @@ public class UserController {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid username or password"));
     }
 
-    @PostMapping("/refreshtoken")
-    public ResponseEntity<Object> refreshToken(@RequestBody User user) {
-        return ResponseEntity.ok().build();
-    }
-    @PostMapping("/abouttoken")
-    public ResponseEntity<Object> refreshToken(@RequestBody User user) {
-        return ResponseEntity.ok().build();
-    }
-
 }
