@@ -84,6 +84,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthResponse'
+  /users/abouttoken:
+    post:
+      tags:
+        - User
+      summary: Information about user token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+            examples:
+              example1:
+                value:
+                  username: "user1"
+      responses:
+        '200':
+          description: Token information provided
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
 components:
   schemas:
     User:
@@ -102,10 +124,6 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Role'
-      required:
-        - username
-        - email
-        - passwordHash
     Role:
       type: object
       properties:
@@ -114,10 +132,6 @@ components:
           format: int64
         name:
           type: string
-        users:
-          type: array
-          items:
-            $ref: '#/components/schemas/User'
     AuthResponse:
       type: object
       properties:
@@ -125,14 +139,11 @@ components:
           type: string
         refreshToken:
           type: string
-      required:
-        - accessToken
-        - refreshToken
-  securitySchemes:
-    BearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT
 security:
-  - BearerAuth: []
+  - jwt: []
+securitySchemes:
+  jwt:
+    type: http
+    scheme: bearer
+    bearerFormat: JWT
 ----
