@@ -11,5 +11,6 @@
 
 |https://autodoc-ai.atlassian.net/browse/AUT-1[AUT-1] |Audi RLU feature |2025.3
 |https://autodoc-ai.atlassian.net/browse/AUT-2[AUT-2] |Test demo |2025.3
+|https://autodoc-ai.atlassian.net/browse/AUT-3[AUT-3] |Final demo |2025.3
 |https://autodoc-ai.atlassian.net/browse/KAN-1[KAN-1] |Audi RLU feature |2025.3
 |===
