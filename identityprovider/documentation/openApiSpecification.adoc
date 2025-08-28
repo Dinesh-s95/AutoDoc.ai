@@ -31,7 +31,7 @@ paths:
                 value:
                   username: "newuser"
                   email: "newuser@example.com"
-                  passwordHash: "hashedpassword"
+                  password: "password123"
       responses:
         '200':
           description: User registered successfully
@@ -39,6 +39,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/User'
+        '400':
+          description: Invalid input
   /users/login:
     post:
       tags:
@@ -54,7 +56,7 @@ paths:
               example1:
                 value:
                   username: "user1"
-                  passwordHash: "hashedpassword"
+                  password: "password123"
       responses:
         '200':
           description: Login successful
@@ -62,50 +64,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AuthResponse'
-  /users/refreshtoken:
-    post:
-      tags:
-        - User
-      summary: Refresh authentication token
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/User'
-            examples:
-              example1:
-                value:
-                  username: "user1"
-      responses:
-        '200':
-          description: Token refreshed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AuthResponse'
-  /users/abouttoken:
-    post:
-      tags:
-        - User
-      summary: Information about user token
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/User'
-            examples:
-              example1:
-                value:
-                  username: "user1"
-      responses:
-        '200':
-          description: Token information provided
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Authentication failed
 components:
   schemas:
     User:
@@ -114,12 +74,16 @@ components:
         id:
           type: integer
           format: int64
+          example: 1
         username:
           type: string
+          example: "user1"
         email:
           type: string
+          example: "user1@example.com"
         passwordHash:
           type: string
+          example: "$2a$10$..."
         roles:
           type: array
           items:
@@ -130,19 +94,27 @@ components:
         id:
           type: integer
           format: int64
+          example: 1
         name:
           type: string
+          example: "ADMIN"
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
     AuthResponse:
       type: object
       properties:
-        accessToken:
+        token:
           type: string
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
         refreshToken:
           type: string
+          example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
 security:
-  - jwt: []
+  - bearerAuth: []
 securitySchemes:
-  jwt:
+  bearerAuth:
     type: http
     scheme: bearer
     bearerFormat: JWT
