@@ -18,7 +18,7 @@ paths:
   /users/register:
     post:
       tags:
-        - User
+        - User Management
       summary: Register a new user
       requestBody:
         required: true
@@ -27,7 +27,8 @@ paths:
             schema:
               $ref: '#/components/schemas/User'
             examples:
-              example1:
+              user:
+                summary: Example User
                 value:
                   username: "newuser"
                   email: "newuser@example.com"
@@ -42,7 +43,7 @@ paths:
   /users/login:
     post:
       tags:
-        - User
+        - User Management
       summary: User login
       requestBody:
         required: true
@@ -51,7 +52,8 @@ paths:
             schema:
               $ref: '#/components/schemas/User'
             examples:
-              example1:
+              user:
+                summary: Example Login
                 value:
                   username: "user1"
                   passwordHash: "hashedpassword"
@@ -61,51 +63,76 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthResponse'
+                $ref: '#/components/schemas/Token'
   /users/refreshtoken:
     post:
       tags:
-        - User
+        - User Management
       summary: Refresh authentication token
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/User'
+              $ref: '#/components/schemas/Token'
             examples:
-              example1:
+              token:
+                summary: Example Token
                 value:
-                  username: "user1"
+                  refreshToken: "refreshTokenExample"
       responses:
         '200':
           description: Token refreshed successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthResponse'
+                $ref: '#/components/schemas/Token'
   /users/abouttoken:
     post:
       tags:
-        - User
-      summary: Information about user token
+        - User Management
+      summary: Get information about token
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/User'
+              $ref: '#/components/schemas/Token'
             examples:
-              example1:
+              token:
+                summary: Example Token
                 value:
-                  username: "user1"
+                  accessToken: "accessTokenExample"
       responses:
         '200':
-          description: Token information provided
+          description: Token information retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthResponse'
+                $ref: '#/components/schemas/Token'
+  /users/statustoken:
+    post:
+      tags:
+        - User Management
+      summary: Check status of token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Token'
+            examples:
+              token:
+                summary: Example Token
+                value:
+                  accessToken: "accessTokenExample"
+      responses:
+        '200':
+          description: Token status retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Token'
 components:
   schemas:
     User:
@@ -124,6 +151,10 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/Role'
+      required:
+        - username
+        - email
+        - passwordHash
     Role:
       type: object
       properties:
@@ -132,18 +163,31 @@ components:
           format: int64
         name:
           type: string
-    AuthResponse:
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
+    Token:
       type: object
       properties:
         accessToken:
           type: string
         refreshToken:
           type: string
-security:
-  - jwt: []
-securitySchemes:
-  jwt:
-    type: http
-    scheme: bearer
-    bearerFormat: JWT
+        user:
+          $ref: '#/components/schemas/User'
+        client:
+          $ref: '#/components/schemas/Client'
+    Client:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        clientName:
+          type: string
+        clientSecret:
+          type: string
+        redirectUri:
+          type: string
 ----
