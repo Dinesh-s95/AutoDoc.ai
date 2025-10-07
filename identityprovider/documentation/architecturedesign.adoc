@@ -147,4 +147,3 @@ The application is deployed within a VPC with restricted access. Only HTTP and H
 2. System validates credentials and issues a JWT.
 3. JWT is used for subsequent requests to authenticate and authorize the user.
 
-This document provides a comprehensive overview of the Identity Provider system architecture, designed for secure and efficient user management and authentication.
