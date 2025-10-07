@@ -27,7 +27,8 @@ paths:
             schema:
               $ref: '#/components/schemas/User'
             examples:
-              example1:
+              user:
+                summary: Example User
                 value:
                   username: "newuser"
                   email: "newuser@example.com"
@@ -51,9 +52,10 @@ paths:
             schema:
               $ref: '#/components/schemas/User'
             examples:
-              example1:
+              user:
+                summary: Example User
                 value:
-                  username: "user1"
+                  username: "existinguser"
                   passwordHash: "hashedpassword"
       responses:
         '200':
@@ -74,34 +76,13 @@ paths:
             schema:
               $ref: '#/components/schemas/User'
             examples:
-              example1:
+              user:
+                summary: Example User
                 value:
-                  username: "user1"
+                  username: "existinguser"
       responses:
         '200':
           description: Token refreshed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/AuthResponse'
-  /users/abouttoken:
-    post:
-      tags:
-        - User
-      summary: Information about user token
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/User'
-            examples:
-              example1:
-                value:
-                  username: "user1"
-      responses:
-        '200':
-          description: Token information provided
           content:
             application/json:
               schema:
@@ -120,18 +101,10 @@ components:
           type: string
         passwordHash:
           type: string
-        roles:
-          type: array
-          items:
-            $ref: '#/components/schemas/Role'
-    Role:
-      type: object
-      properties:
-        id:
-          type: integer
-          format: int64
-        name:
-          type: string
+      required:
+        - username
+        - email
+        - passwordHash
     AuthResponse:
       type: object
       properties:
@@ -139,10 +112,13 @@ components:
           type: string
         refreshToken:
           type: string
+      required:
+        - accessToken
+        - refreshToken
 security:
-  - jwt: []
+  - bearerAuth: []
 securitySchemes:
-  jwt:
+  bearerAuth:
     type: http
     scheme: bearer
     bearerFormat: JWT
