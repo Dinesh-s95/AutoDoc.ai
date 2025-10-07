@@ -12,8 +12,8 @@ from pathlib import Path
 import html
 
 # Configuration
-CONFLUENCE_URL = os.getenv("CONFLUENCE_URL", "https://autodoc-ai.atlassian.net")
-CONFLUENCE_USER = os.getenv("CONFLUENCE_USER", "sharanr498@gmail.com")
+CONFLUENCE_URL = os.getenv("CONFLUENCE_URL")
+CONFLUENCE_USER = os.getenv("CONFLUENCE_USER")
 CONFLUENCE_API_TOKEN = os.getenv("CONFLUENCE_API_TOKEN")
 SPACE_KEY = os.getenv("SPACE_KEY", "XFLOW")
 
