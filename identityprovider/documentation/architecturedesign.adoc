@@ -139,4 +139,3 @@ Data flows from `UserController` to `UserService` and `JWTService` for processin
 
 === Authentication and Authorization Flows at System Level
 
-Authentication is handled via `UserController` which uses `JWTService` to create and validate tokens. `SecurityConfig` configures HTTP security, applying `JwtAuthFilter` to secure endpoints.

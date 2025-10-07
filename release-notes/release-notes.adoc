@@ -9,7 +9,8 @@
 |===
 |Ticket |Description |Release
 
-|https://autodoc-ai.atlassian.net/browse/AUT-1[AUT-1] |Audi RLU feature |2025.3
-|https://autodoc-ai.atlassian.net/browse/AUT-2[AUT-2] |Test demo |2025.3
-|https://autodoc-ai.atlassian.net/browse/KAN-1[KAN-1] |Audi RLU feature |2025.3
+|undefined/browse/AUT-1[AUT-1] |Audi RLU feature |2025.3
+|undefined/browse/AUT-2[AUT-2] |Test demo |2025.3
+|undefined/browse/DEMO-1[DEMO-1] |DEMO-1 |2025.4
+|undefined/browse/KAN-1[KAN-1] |Audi RLU feature |2025.3
 |===

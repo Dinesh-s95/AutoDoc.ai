@@ -6,7 +6,7 @@ The Enrollment service provides API operations for managing enrollment domain re
 
 NOTE: A source block marked with class openapi will be wrapped in an OpenAPI Documentation Macro. (see https://marketplace.atlassian.com/apps/1215176/open-api-documentation-for-confluence?hosting=cloud&tab=overview[Open API Documentation for Confluence])!
 
-[source,openapi]
+[source.openapi,yaml]
 ----
 openapi: 3.0.0
 info:
@@ -21,13 +21,17 @@ paths:
         - Enrollment
       summary: Nominate a primary user
       operationId: nominatePrimary
-      parameters:
-        - name: username
-          in: query
-          required: true
-          schema:
-            type: string
-          example: "john_doe"
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+              required:
+                - username
       responses:
         '200':
           description: Successful operation
@@ -35,11 +39,36 @@ paths:
             text/plain:
               schema:
                 type: string
-              example: "Nomination successful"
+                example: "Primary nomination successful for user: exampleUser"
         '400':
           description: Bad request
-        '401':
-          description: Unauthorized
+  /enrollment/nominate-secondary:
+    post:
+      tags:
+        - Enrollment
+      summary: Nominate a secondary user
+      operationId: nominateSecondary
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+              required:
+                - username
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "Secondary nomination successful for user: exampleUser"
+        '400':
+          description: Bad request
 components:
   schemas:
     Enrollment:
@@ -48,25 +77,26 @@ components:
         id:
           type: integer
           format: int64
+          example: 123
         role:
           type: string
+          example: "Primary"
         username:
           type: string
+          example: "exampleUser"
         vin:
           type: string
-      required:
-        - id
-        - username
+          example: "1HGCM82633A004352"
     UserResponseDTO:
       type: object
       properties:
         mobilityUserId:
           type: string
+          example: "1001"
         username:
           type: string
+          example: "exampleUser"
         vin:
           type: string
-      required:
-        - mobilityUserId
-        - username
+          example: "1HGCM82633A004352"
 ----
