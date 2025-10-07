@@ -68,7 +68,7 @@ jobs:
       - name: Upload documentation to Confluence
         if: steps.check-docs.outputs.has_docs == 'true'
         env:
-          CONFLUENCE_URL: "https://autodoc-ai.atlassian.net"
+          CONFLUENCE_URL: ${{ secrets.CONFLUENCE_URL }}
           CONFLUENCE_USER: ${{ secrets.CONFLUENCE_USER }}
           CONFLUENCE_API_TOKEN: ${{ secrets.CONFLUENCE_API_TOKEN }}
           SPACE_KEY: ${{ secrets.SPACE_KEY }}
