@@ -27,15 +27,14 @@ paths:
             schema:
               $ref: '#/components/schemas/User'
             examples:
-              user:
-                summary: Example User
+              example1:
                 value:
                   username: "newuser"
                   email: "newuser@example.com"
-                  passwordHash: "hashedpassword"
+                  password: "password123"
       responses:
         '200':
-          description: User registered successfully
+          description: Successfully registered
           content:
             application/json:
               schema:
@@ -52,11 +51,10 @@ paths:
             schema:
               $ref: '#/components/schemas/User'
             examples:
-              user:
-                summary: Example User
+              example1:
                 value:
-                  username: "existinguser"
-                  passwordHash: "hashedpassword"
+                  username: "user1"
+                  password: "password123"
       responses:
         '200':
           description: Login successful
@@ -75,14 +73,27 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/User'
-            examples:
-              user:
-                summary: Example User
-                value:
-                  username: "existinguser"
       responses:
         '200':
-          description: Token refreshed successfully
+          description: Token refreshed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+  /users/refreshtokens:
+    post:
+      tags:
+        - User
+      summary: Refresh authentication token (alternative endpoint)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+      responses:
+        '200':
+          description: Token refreshed
           content:
             application/json:
               schema:
@@ -101,10 +112,26 @@ components:
           type: string
         passwordHash:
           type: string
+        roles:
+          type: array
+          items:
+            $ref: '#/components/schemas/Role'
       required:
         - username
         - email
         - passwordHash
+    Role:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/User'
     AuthResponse:
       type: object
       properties:
@@ -116,9 +143,9 @@ components:
         - accessToken
         - refreshToken
 security:
-  - bearerAuth: []
+  - jwt: []
 securitySchemes:
-  bearerAuth:
+  jwt:
     type: http
     scheme: bearer
     bearerFormat: JWT
